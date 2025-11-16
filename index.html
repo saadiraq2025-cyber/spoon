@@ -22,19 +22,22 @@ body{
     box-shadow: 0 0 10px #ccc;
     text-align: center;
 }
+
+/* اللوغو */
 .logo{
-    width: 120px;
-    height: 120px;
+    width: 150px;
+    height: 150px;
     background:#ddd;
     border-radius: 50%;
     margin: auto;
-    margin-bottom: 20px;
+    margin-bottom: 25px;
     display:flex;
     justify-content:center;
     align-items:center;
-    font-size:20px;
-    color:#555;
+    font-size:60px; /* تكبير الإيموجي */
+    color:#333;
 }
+
 .main-btn{
     width: 100%;
     padding: 14px;
@@ -49,8 +52,22 @@ body{
 .main-btn.secondary{
     background:#0077cc;
 }
-input{
-    font-size:18px !important;
+
+#registerBox{
+    display:none;
+    margin-top:20px;
+    text-align:right;
+}
+
+#registerBox input{
+    margin-top:8px;
+    font-size:17px;
+}
+
+#msg{
+    margin-top:10px;
+    color:red;
+    font-size:16px;
 }
 </style>
 
@@ -63,14 +80,27 @@ input{
     <!-- اللوغو -->
     <div class="logo">📒💸</div>
 
+    <!-- تسجيل الدخول -->
     <input id="phone" placeholder="رقم الهاتف">
     <input id="pass" type="password" placeholder="كلمة المرور">
 
     <button class="main-btn" onclick="login()">تسجيل الدخول</button>
 
-    <button class="main-btn secondary" onclick="registerPage()">تسجيل مستخدم جديد</button>
+    <button class="main-btn secondary" onclick="showRegister()">تسجيل مستخدم جديد</button>
 
-    <p id="msg" style="color:red;margin-top:10px;"></p>
+    <p id="msg"></p>
+
+    <!-- نموذج تسجيل مستخدم جديد داخل نفس الصفحة -->
+    <div id="registerBox">
+        <h3 style="text-align:center;">تسجيل مستخدم جديد</h3>
+
+        <input id="rphone" placeholder="رقم الهاتف الجديد">
+        <input id="rpass" placeholder="كلمة المرور الجديدة">
+
+        <button class="main-btn" style="background:#444;" onclick="createUser()">إنشاء حساب</button>
+        <p id="rmsg" style="color:red;"></p>
+    </div>
+
 </div>
 
 <script>
@@ -88,6 +118,12 @@ if(users.length === 0){
     localStorage.setItem("users", JSON.stringify(users));
 }
 
+// إظهار نموذج تسجيل جديد
+function showRegister(){
+    registerBox.style.display = "block";
+}
+
+// تسجيل دخول
 function login(){
     let p = phone.value.trim();
     let pw = pass.value.trim();
@@ -120,8 +156,40 @@ function login(){
     }
 }
 
-function registerPage(){
-    window.location.href = "register.html";
+// إنشاء مستخدم جديد من الواجهة الرئيسية
+function createUser(){
+    let p = rphone.value.trim();
+    let pw = rpass.value.trim();
+
+    if(p === "" || pw === ""){
+        rmsg.innerText = "أكمل الحقول";
+        return;
+    }
+
+    if(users.find(u => u.phone === p)){
+        rmsg.innerText = "رقم الهاتف مسجّل مسبقاً";
+        return;
+    }
+
+    users.push({
+        phone: p,
+        pass: pw,
+        role: "user",
+        ban:false,
+        expire:0
+    });
+
+    localStorage.setItem("users", JSON.stringify(users));
+
+    rmsg.style.color = "green";
+    rmsg.innerText = "تم إنشاء الحساب بنجاح";
+
+    setTimeout(()=>{
+        registerBox.style.display = "none";
+        rmsg.innerText="";
+        rphone.value="";
+        rpass.value="";
+    }, 1000);
 }
 </script>
 
