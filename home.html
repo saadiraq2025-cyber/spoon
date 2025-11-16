@@ -9,30 +9,11 @@
 <body>
 
 <div class="container">
-<h2>دفتر الديون</h2>
+<h2>البحث عن مدين / مدان</h2>
 
-<div>
-<input id="dName" placeholder="الاسم">
-<select id="dType">
-    <option value="مدين">مدين</option>
-    <option value="مدان">مدان</option>
-</select>
-<input id="dAmount" type="number" placeholder="المبلغ">
-<button onclick="addDebt()">إضافة</button>
-</div>
+<input id="searchName" placeholder="ابحث باسم الشخص" oninput="render()">
 
-<table>
-<thead>
-<tr>
-<th>الاسم</th>
-<th>النوع</th>
-<th>المبلغ</th>
-<th>التاريخ</th>
-<th>إدارة</th>
-</tr>
-</thead>
-<tbody id="list"></tbody>
-</table>
+<div id="resultsBox" style="margin-top:20px;"></div>
 
 <div class="totalBox">المجموع الكلي: <span id="total">0</span> دينار</div>
 
@@ -44,71 +25,61 @@
 let loginUser = JSON.parse(localStorage.getItem("loginUser"));
 if(!loginUser) window.location.href="index.html";
 
-// رقم المستخدم الذي يتم عرض ديونه
-let userPhone = loginUser.role==="admin"
-    ? localStorage.getItem("editUserPhone")
-    : loginUser.phone;
+// رقم المستخدم
+let userPhone = loginUser.phone;
 
-if(!userPhone) userPhone = loginUser.phone;
-
+// جلب جميع الديون
 let allDebts = JSON.parse(localStorage.getItem("debts") || "{}");
 
+// إنشاء قائمة فارغة لو المستخدم جديد
 if(!allDebts[userPhone]) allDebts[userPhone] = [];
 
+// حفظ البيانات
 function save(){
     localStorage.setItem("debts", JSON.stringify(allDebts));
 }
 
+// عرض النتائج
 function render(){
-    let debts = allDebts[userPhone];
-    list.innerHTML = "";
+    let name = searchName.value.trim();
+
+    let list = allDebts[userPhone].filter(d => 
+        d.name.includes(name)
+    );
+
+    let html = "";
     let sum = 0;
 
-    debts.forEach((d,i)=>{
+    list.forEach((d,i)=>{
         sum += Number(d.amount);
-        list.innerHTML += `
-        <tr>
-            <td>${d.name}</td>
-            <td>${d.type}</td>
-            <td>${d.amount}</td>
-            <td>${d.date}</td>
-            <td>
-                <button onclick="pay(${i})">تسديد</button>
-                <button onclick="addMore(${i})" style="background:orange;">إضافة مبلغ</button>
-            </td>
-        </tr>
+
+        html += `
+        <div style="padding:10px;border:1px solid #aaa;border-radius:8px;margin-bottom:10px;background:#fff;">
+            <b>الاسم:</b> ${d.name}<br>
+            <b>النوع:</b> ${d.type}<br>
+            <b>المبلغ:</b> ${d.amount}<br>
+            <b>التاريخ:</b> ${d.date}<br><br>
+
+            <button onclick="pay(${getIndex(d)})" style="background:red;">تسديد</button>
+            <button onclick="addMore(${getIndex(d)})" style="background:orange;">إضافة مبلغ</button>
+        </div>
         `;
     });
 
+    resultsBox.innerHTML = html;
     total.innerText = sum;
 }
 
-function addDebt(){
-    if(dName.value=="" || dAmount.value=="") return;
-
-    allDebts[userPhone].push({
-        name:dName.value,
-        type:dType.value,
-        amount:dAmount.value,
-        date:new Date().toLocaleDateString()
-    });
-
-    save();
-    render();
-
-    dName.value="";
-    dAmount.value="";
+// الحصول على رقم العنصر الصحيح
+function getIndex(obj){
+    return allDebts[userPhone].indexOf(obj);
 }
 
-function pay(i){
-    allDebts[userPhone].splice(i,1);
-    save();
-    render();
-}
-
+// إضافة مبلغ
 function addMore(i){
     let d = allDebts[userPhone][i];
     let more = prompt("المبلغ المضاف:");
+
     if(more){
         d.amount = Number(d.amount) + Number(more);
         save();
@@ -116,11 +87,19 @@ function addMore(i){
     }
 }
 
+// تسديد مبلغ (مسح الدين)
+function pay(i){
+    allDebts[userPhone].splice(i,1);
+    save();
+    render();
+}
+
 function logout(){
     localStorage.removeItem("loginUser");
     window.location.href="index.html";
 }
 
+// تشغيل أولي
 render();
 </script>
 
