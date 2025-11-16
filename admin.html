@@ -33,7 +33,7 @@
 <tbody id="uList"></tbody>
 </table>
 
-<button onclick="logout()" style="margin-top:20px;background:red;" class="btn-red">تسجيل خروج</button>
+<button onclick="logout()" class="btn-red" style="margin-top:20px;">تسجيل خروج</button>
 
 </div>
 
@@ -42,7 +42,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
 
 <script>
-const firebaseConfig = {
+firebase.initializeApp({
   apiKey: "AIzaSyA_3TFx5dUR3JbcXj5jFIZ_mpjWeco7FVo",
   authDomain: "tktkbaghdad.firebaseapp.com",
   databaseURL: "https://tktkbaghdad-default-rtdb.firebaseio.com",
@@ -50,13 +50,9 @@ const firebaseConfig = {
   storageBucket: "tktkbaghdad.firebasestorage.app",
   messagingSenderId: "939931176033",
   appId: "1:939931176033:web:1d44fa5fd01ee75b326e20"
-};
-firebase.initializeApp(firebaseConfig);
+});
 
 const db = firebase.database();
-let admin = JSON.parse(localStorage.getItem("loginUser"));
-if(!admin || admin.role !== "admin") window.location.href = "index.html";
-
 let usersRef = db.ref("users");
 
 function addUser(){
@@ -78,34 +74,70 @@ function addUser(){
 }
 
 function loadUsers(){
-    usersRef.once("value", snap => {
-        uList.innerHTML = "";
-        snap.forEach(ch => {
+    usersRef.once("value", snap=>{
+        uList.innerHTML="";
+
+        snap.forEach(ch=>{
             let u = ch.val();
-            let exp = u.expire == 0 ? "دائم" : new Date(u.expire).toLocaleString();
             let ph = u.phone;
+            let exp = u.expire == 0 ? "دائم" : new Date(u.expire).toLocaleString();
 
             uList.innerHTML += `
             <tr>
-              <td>${u.phone}</td>
-              <td>${u.ban ? "محظور" : "نشط"}</td>
-              <td>${exp}</td>
-              <td>
-                <button onclick="openDebts('${ph}')">فتح ديونه</button>
-                <button onclick="toggleBan('${ph}', ${u.ban})" style="background:orange;">
-                  ${u.ban ? "إلغاء الحظر" : "حظر"}
-                </button>
-                <button onclick="activate('${ph}')" style="background:#444;">تفعيل</button>
-                <button onclick="deleteUser('${ph}')" style="background:red;">حذف</button>
-              </td>
-            </tr>`;
+                <td>${ph}</td>
+                <td>${u.ban?"محظور":"نشط"}</td>
+                <td>${exp}</td>
+                <td>
+                    <button onclick="openDebts('${ph}')">فتح</button>
+                    <button onclick="editUser('${ph}')">تعديل</button>
+                    <button onclick="toggleBan('${ph}',${u.ban})" style="background:orange;">
+                        ${u.ban?"إلغاء حظر":"حظر"}
+                    </button>
+                    <button onclick="activate('${ph}')" style="background:#444;">تفعيل</button>
+                    <button onclick="deleteUser('${ph}')" style="background:red;">حذف</button>
+                </td>
+            </tr>
+            `;
         });
     });
 }
 
 function openDebts(phone){
     localStorage.setItem("loginPhone", phone);
-    window.location.href = "home.html";
+    window.location="home.html";
+}
+
+// ✔ تعديل المستخدم
+function editUser(phone){
+    let newP = prompt("رقم الهاتف الجديد:", phone);
+    if(!newP) return;
+
+    db.ref("users/"+phone).once("value", snap=>{
+        let u = snap.val();
+        let newPass = prompt("كلمة المرور الجديدة:", u.pass);
+
+        if(!newPass) return;
+
+        // انشاء مستخدم جديد برقم جديد
+        db.ref("users/"+newP).set({
+            phone:newP,
+            pass:newPass,
+            role:u.role,
+            ban:u.ban,
+            expire:u.expire
+        });
+
+        // نقل الديون
+        db.ref("debts/"+phone).once("value", dSnap=>{
+            db.ref("debts/"+newP).set(dSnap.val());
+            db.ref("debts/"+phone).remove();
+        });
+
+        // حذف القديم
+        db.ref("users/"+phone).remove();
+
+        loadUsers();
+    });
 }
 
 function toggleBan(phone, b){
@@ -117,22 +149,22 @@ function activate(phone){
     let days = prompt("عدد الأيام:");
     if(!days || isNaN(days)) return;
 
-    let ms = days * 24 * 60 * 60 * 1000;
-    usersRef.child(phone).update({expire: Date.now() + ms});
+    let ms = days*24*60*60*1000;
+    usersRef.child(phone).update({expire: Date.now()+ms});
     loadUsers();
 }
 
 function deleteUser(phone){
-    if(confirm("حذف المستخدم؟")){
-        usersRef.child(phone).remove();
-        db.ref("debts/" + phone).remove();
+    if(confirm("حذف المستخدم نهائياً؟")){
+        db.ref("users/"+phone).remove();
+        db.ref("debts/"+phone).remove();
         loadUsers();
     }
 }
 
 function logout(){
     localStorage.removeItem("loginUser");
-    window.location.href = "index.html";
+    window.location="index.html";
 }
 
 loadUsers();
