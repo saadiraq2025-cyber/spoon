@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
-<title>سجل الديون - الصفحة الرئيسية</title>
+<title>سجل الديون - تسجيل الدخول</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -22,8 +22,6 @@ body{
     box-shadow: 0 0 10px #ccc;
     text-align: center;
 }
-
-/* اللوغو */
 .logo{
     width: 150px;
     height: 150px;
@@ -34,10 +32,9 @@ body{
     display:flex;
     justify-content:center;
     align-items:center;
-    font-size:60px; /* تكبير الإيموجي */
+    font-size:60px;
     color:#333;
 }
-
 .main-btn{
     width: 100%;
     padding: 14px;
@@ -52,22 +49,23 @@ body{
 .main-btn.secondary{
     background:#0077cc;
 }
-
-#registerBox{
-    display:none;
-    margin-top:20px;
-    text-align:right;
+.pay-box{
+    background:#fff6f6;
+    padding:15px;
+    margin-top:15px;
+    border-radius:10px;
+    border:1px solid #ffb3b3;
 }
-
-#registerBox input{
-    margin-top:8px;
-    font-size:17px;
-}
-
-#msg{
+.pay-btn{
+    background:#1da851;
+    padding:14px;
+    width:100%;
+    border:none;
+    color:white;
+    border-radius:8px;
+    font-size:18px;
     margin-top:10px;
-    color:red;
-    font-size:16px;
+    cursor:pointer;
 }
 </style>
 
@@ -77,10 +75,8 @@ body{
 
 <div class="main-box">
 
-    <!-- اللوغو -->
     <div class="logo">📒💸</div>
 
-    <!-- تسجيل الدخول -->
     <input id="phone" placeholder="رقم الهاتف">
     <input id="pass" type="password" placeholder="كلمة المرور">
 
@@ -88,11 +84,11 @@ body{
 
     <button class="main-btn secondary" onclick="showRegister()">تسجيل مستخدم جديد</button>
 
-    <p id="msg"></p>
+    <p id="msg" style="color:red;margin-top:10px;"></p>
 
-    <!-- نموذج تسجيل مستخدم جديد داخل نفس الصفحة -->
-    <div id="registerBox">
-        <h3 style="text-align:center;">تسجيل مستخدم جديد</h3>
+    <!-- تسجيل جديد داخل الصفحة -->
+    <div id="registerBox" style="display:none;">
+        <h3 style="margin-top:20px;">تسجيل مستخدم جديد</h3>
 
         <input id="rphone" placeholder="رقم الهاتف الجديد">
         <input id="rpass" placeholder="كلمة المرور الجديدة">
@@ -101,34 +97,43 @@ body{
         <p id="rmsg" style="color:red;"></p>
     </div>
 
+    <!-- رسالة الحظر -->
+    <div id="banBox" style="display:none;" class="pay-box">
+        <b>تم حظر الحساب</b><br>
+        عليك تسديد الاشتراك  
+        <span style="color:red;font-weight:bold;">5000 دينار</span><br>
+        إلى زين كاش:  
+        <b>07816175944</b><br>
+        أو التواصل واتساب
+        <button class="pay-btn" onclick="openWhatsApp()">اتصل واتساب 07816175944</button>
+    </div>
+
 </div>
 
 <script>
 let users = JSON.parse(localStorage.getItem("users") || "[]");
 
-// إنشاء حساب مدير افتراضي
+// إنشاء مدير أول مرة
 if(users.length === 0){
-    users.push({ 
-        phone:"07700000000", 
-        pass:"1234", 
+    users.push({
+        phone:"07700000000",
+        pass:"1234",
         role:"admin",
         ban:false,
-        expire:0 
+        expire:0
     });
     localStorage.setItem("users", JSON.stringify(users));
 }
 
-// إظهار نموذج تسجيل جديد
-function showRegister(){
-    registerBox.style.display = "block";
-}
-
-// تسجيل دخول
+// تسجيل الدخول
 function login(){
+    banBox.style.display = "none";
+    msg.innerText = "";
+
     let p = phone.value.trim();
     let pw = pass.value.trim();
 
-    let user = users.find(u=>u.phone===p && u.pass===pw);
+    let user = users.find(u => u.phone === p && u.pass === pw);
 
     if(!user){
         msg.innerText = "بيانات خاطئة";
@@ -136,7 +141,8 @@ function login(){
     }
 
     if(user.ban){
-        msg.innerText = "هذا المستخدم محظور";
+        // اظهار صندوق الدفع
+        banBox.style.display = "block";
         return;
     }
 
@@ -156,7 +162,12 @@ function login(){
     }
 }
 
-// إنشاء مستخدم جديد من الواجهة الرئيسية
+// فتح صندوق التسجيل
+function showRegister(){
+    registerBox.style.display = "block";
+}
+
+// إنشاء مستخدم جديد
 function createUser(){
     let p = rphone.value.trim();
     let pw = rpass.value.trim();
@@ -167,14 +178,14 @@ function createUser(){
     }
 
     if(users.find(u => u.phone === p)){
-        rmsg.innerText = "رقم الهاتف مسجّل مسبقاً";
+        rmsg.innerText = "رقم الهاتف موجود مسبقاً";
         return;
     }
 
     users.push({
-        phone: p,
-        pass: pw,
-        role: "user",
+        phone:p,
+        pass:pw,
+        role:"user",
         ban:false,
         expire:0
     });
@@ -182,14 +193,19 @@ function createUser(){
     localStorage.setItem("users", JSON.stringify(users));
 
     rmsg.style.color = "green";
-    rmsg.innerText = "تم إنشاء الحساب بنجاح";
+    rmsg.innerText = "تم إنشاء الحساب";
 
     setTimeout(()=>{
-        registerBox.style.display = "none";
         rmsg.innerText="";
+        registerBox.style.display = "none";
         rphone.value="";
         rpass.value="";
-    }, 1000);
+    },1000);
+}
+
+// فتح الواتساب
+function openWhatsApp(){
+    window.location.href = "https://wa.me/9647816175944";
 }
 </script>
 
