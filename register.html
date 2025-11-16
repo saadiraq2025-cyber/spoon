@@ -38,15 +38,17 @@ function register(){
     users.push({
         phone:p,
         pass:pw,
-        role:"user"
+        role:"user",
+        ban:false,
+        expire:0
     });
 
     localStorage.setItem("users", JSON.stringify(users));
 
     msg.style.color = "green";
-    msg.innerText = "تم التسجيل بنجاح، يمكنك تسجيل الدخول الآن";
+    msg.innerText = "تم التسجيل بنجاح";
 
-    setTimeout(()=>{ window.location.href="index.html"; }, 1000);
+    setTimeout(()=>{ window.location.href="index.html"; }, 800);
 }
 </script>
 
