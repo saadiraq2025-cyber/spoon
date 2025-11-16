@@ -35,23 +35,31 @@
 
 </div>
 
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+
 <script>
-let loginUser = JSON.parse(localStorage.getItem("loginUser"));
-if(!loginUser) window.location.href="index.html";
+// إعداد فيربيز
+const firebaseConfig = {
+  apiKey: "AIzaSyA_3TFx5dUR3JbcXj5jFIZ_mpjWeco7FVo",
+  authDomain: "tktkbaghdad.firebaseapp.com",
+  databaseURL: "https://tktkbaghdad-default-rtdb.firebaseio.com",
+  projectId: "tktkbaghdad",
+  storageBucket: "tktkbaghdad.firebasestorage.app",
+  messagingSenderId: "939931176033",
+  appId: "1:939931176033:web:1d44fa5fd01ee75b326e20"
+};
 
-// رقم المستخدم
-let userPhone = loginUser.phone;
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+</script>
 
-// جميع الديون من التخزين
-let allDebts = JSON.parse(localStorage.getItem("debts") || "{}");
+<script>
+let userPhone = localStorage.getItem("loginPhone");
+if(!userPhone) window.location.href = "index.html";
 
-// اول دخول
-if(!allDebts[userPhone]) allDebts[userPhone] = [];
-
-// حفظ
-function save(){
-    localStorage.setItem("debts", JSON.stringify(allDebts));
-}
+let debtsRef = db.ref("debts/" + userPhone);
 
 // إضافة دين جديد
 function addDebt(){
@@ -64,96 +72,91 @@ function addDebt(){
         return;
     }
 
-    allDebts[userPhone].push({
+    let debt = {
         name: name,
         type: type,
         amount: Number(amount),
         date: new Date().toLocaleDateString()
-    });
+    };
 
-    save();
-    clearInputs();
+    debtsRef.push(debt);
+
+    dName.value = "";
+    dAmount.value = "";
     render();
 }
 
-function clearInputs(){
-    dName.value = "";
-    dAmount.value = "";
-}
-
-// عرض بحسب البحث
+// عرض بحث
 function render(){
-    let name = searchName.value.trim();
+    let search = searchName.value.trim();
 
-    let list = allDebts[userPhone].filter(d =>
-        d.name.includes(name)
-    );
+    debtsRef.once("value", snap => {
+        let html = "";
+        let sum = 0;
 
-    let html = "";
-    let sum = 0;
+        snap.forEach(child => {
+            let d = child.val();
+            let key = child.key;
 
-    list.forEach((d,i)=>{
-        sum += Number(d.amount);
+            if(!d.name.includes(search)) return;
 
-        html += `
-        <div style="padding:10px;border:1px solid #aaa;border-radius:8px;margin-bottom:10px;background:#fff;">
-            <b>الاسم:</b> ${d.name}<br>
-            <b>النوع:</b> ${d.type}<br>
-            <b>المبلغ المتبقي:</b> ${d.amount}<br>
-            <b>التاريخ:</b> ${d.date}<br><br>
+            sum += d.amount;
 
-            <button onclick="pay(${getIndex(d)})" style="background:red;">تسديد مبلغ</button>
-            <button onclick="addMore(${getIndex(d)})" style="background:orange;">إضافة مبلغ</button>
-        </div>
-        `;
+            html += `
+            <div style="padding:10px;border:1px solid #aaa;border-radius:8px;margin-bottom:10px;background:#fff;">
+                <b>الاسم:</b> ${d.name}<br>
+                <b>النوع:</b> ${d.type}<br>
+                <b>المبلغ المتبقي:</b> ${d.amount}<br>
+                <b>التاريخ:</b> ${d.date}<br><br>
+
+                <button onclick="pay('${key}')" style="background:red;">تسديد مبلغ</button>
+                <button onclick="addMore('${key}')" style="background:orange;">إضافة مبلغ</button>
+            </div>
+            `;
+        });
+
+        resultsBox.innerHTML = html;
+        total.innerText = sum;
     });
-
-    resultsBox.innerHTML = html;
-    total.innerText = sum;
-}
-
-// الحصول على اندكس حقيقي
-function getIndex(obj){
-    return allDebts[userPhone].indexOf(obj);
 }
 
 // إضافة مبلغ
-function addMore(i){
-    let d = allDebts[userPhone][i];
+function addMore(key){
     let more = prompt("المبلغ المضاف:");
-    if(more && !isNaN(more)){
-        d.amount = Number(d.amount) + Number(more);
-        save();
+    if(!more || isNaN(more)) return;
+
+    debtsRef.child(key).once("value", snap => {
+        let d = snap.val();
+        let newAmt = d.amount + Number(more);
+        debtsRef.child(key).update({amount: newAmt});
         render();
-    }
+    });
 }
 
 // تسديد جزئي
-function pay(i){
-    let d = allDebts[userPhone][i];
+function pay(key){
     let amt = prompt("أدخل مبلغ التسديد:");
-
-    if(amt === null || amt === "" || isNaN(amt)) return;
+    if(!amt || isNaN(amt)) return;
 
     amt = Number(amt);
 
-    if(amt <= 0) return;
+    debtsRef.child(key).once("value", snap => {
+        let d = snap.val();
 
-    if(amt >= d.amount){
-        // تم السداد كامل
-        allDebts[userPhone].splice(i,1);
-    } else {
-        // سداد جزئي
-        d.amount = d.amount - amt;
-    }
+        if(amt >= d.amount){
+            debtsRef.child(key).remove();
+        } else {
+            debtsRef.child(key).update({amount: d.amount - amt});
+        }
 
-    save();
-    render();
+        render();
+    });
 }
 
 function logout(){
+    localStorage.removeItem("loginPhone");
     localStorage.removeItem("loginUser");
-    window.location.href="index.html";
+    window.location.href = "index.html";
 }
 
 render();
