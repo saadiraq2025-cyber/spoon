@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>تسجيل جديد</title>
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div class="container">
+<h2>تسجيل حساب جديد</h2>
+
+<input id="phone" placeholder="رقم الهاتف">
+<input id="pass" placeholder="كلمة المرور">
+<button onclick="register()">تسجيل</button>
+
+<p id="msg" style="color:red;"></p>
+</div>
+
+<script>
+let users = JSON.parse(localStorage.getItem("users") || "[]");
+
+function register(){
+    let p = phone.value.trim();
+    let pw = pass.value.trim();
+
+    if(p==="" || pw===""){
+        msg.innerText = "أكمل الحقول";
+        return;
+    }
+
+    if(users.find(u=>u.phone === p)){
+        msg.innerText = "رقم الهاتف موجود مسبقاً";
+        return;
+    }
+
+    users.push({
+        phone:p,
+        pass:pw,
+        role:"user"
+    });
+
+    localStorage.setItem("users", JSON.stringify(users));
+
+    msg.style.color = "green";
+    msg.innerText = "تم التسجيل بنجاح، يمكنك تسجيل الدخول الآن";
+
+    setTimeout(()=>{ window.location.href="index.html"; }, 1000);
+}
+</script>
+
+</body>
+</html>
