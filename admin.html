@@ -15,77 +15,93 @@
 
 <input id="nPhone" placeholder="رقم هاتف المستخدم">
 <input id="nPass" placeholder="كلمة المرور">
-<select id="nRole">
-    <option value="user">مستخدم</option>
-</select>
 <button onclick="addUser()">إضافة المستخدم</button>
-
-<p id="uMsg" style="color:green;"></p>
 
 <h3>جميع المستخدمين</h3>
 <table>
 <thead>
 <tr>
 <th>الهاتف</th>
-<th>الصلاحية</th>
+<th>الحالة</th>
+<th>تنتهي في</th>
 <th>إدارة</th>
 </tr>
 </thead>
 <tbody id="uList"></tbody>
 </table>
 
-<button onclick="logout()">تسجيل خروج</button>
+<button onclick="logout()" style="margin-top:10px;">تسجيل خروج</button>
 
 </div>
 
 <script>
-let user = JSON.parse(localStorage.getItem("loginUser"));
-if(!user || user.role!=="admin") window.location.href="index.html";
+let admin = JSON.parse(localStorage.getItem("loginUser"));
+if(!admin || admin.role!=="admin") window.location.href="index.html";
 
 let users = JSON.parse(localStorage.getItem("users"));
 
 function addUser(){
     let p = nPhone.value.trim();
     let pw = nPass.value.trim();
-    let r = nRole.value;
 
     if(p=="" || pw=="") return;
 
-    users.push({phone:p, pass:pw, role:r});
+    users.push({phone:p, pass:pw, role:"user", ban:false, expire:0});
     localStorage.setItem("users", JSON.stringify(users));
 
     nPhone.value = "";
     nPass.value = "";
 
-    uMsg.innerText = "تم إضافة المستخدم";
     render();
 }
 
-function render(){
-    uList.innerHTML = "";
-    users.forEach((u,i)=>{
-        uList.innerHTML += `
-        <tr>
-            <td>${u.phone}</td>
-            <td>${u.role}</td>
-            <td>
-                <button onclick="openUser('${u.phone}')">فتح</button>
-                <button onclick="delUser(${i})" style="background:red;">حذف</button>
-            </td>
-        </tr>
-        `;
-    });
+function toggleBan(i){
+    users[i].ban = !users[i].ban;
+    localStorage.setItem("users", JSON.stringify(users));
+    render();
 }
 
-function openUser(phone){
-    localStorage.setItem("editUserPhone", phone);
-    window.location.href="home.html";
+function activate(i){
+    let days = prompt("عدد الأيام أو الدقائق:");
+    if(!days) return;
+
+    let ms = Number(days) * 24 * 60 * 60 * 1000;
+    users[i].expire = Date.now() + ms;
+
+    localStorage.setItem("users", JSON.stringify(users));
+    render();
 }
 
 function delUser(i){
     users.splice(i,1);
     localStorage.setItem("users", JSON.stringify(users));
     render();
+}
+
+function editUser(i){
+    localStorage.setItem("editUserPhone", users[i].phone);
+    window.location.href = "home.html";
+}
+
+function render(){
+    uList.innerHTML = "";
+    users.forEach((u,i)=>{
+        let exp = u.expire===0 ? "دائم" : new Date(u.expire).toLocaleString();
+
+        uList.innerHTML += `
+        <tr>
+            <td>${u.phone}</td>
+            <td>${u.ban ? "محظور" : "نشط"}</td>
+            <td>${exp}</td>
+            <td>
+                <button onclick="editUser(${i})">فتح</button>
+                <button onclick="toggleBan(${i})" style="background:orange;">${u.ban?"إلغاء حظر":"حظر"}</button>
+                <button onclick="activate(${i})" style="background:#444;">تفعيل</button>
+                <button onclick="delUser(${i})" style="background:red;">حذف</button>
+            </td>
+        </tr>
+        `;
+    });
 }
 
 function logout(){
