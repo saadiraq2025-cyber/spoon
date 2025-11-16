@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>لوحة المدير</title>
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div class="container">
+<h2>لوحة المدير</h2>
+
+<h3>إضافة مستخدم جديد</h3>
+
+<input id="nPhone" placeholder="رقم هاتف المستخدم">
+<input id="nPass" placeholder="كلمة المرور">
+<select id="nRole">
+    <option value="user">مستخدم</option>
+</select>
+<button onclick="addUser()">إضافة المستخدم</button>
+
+<p id="uMsg" style="color:green;"></p>
+
+<h3>جميع المستخدمين</h3>
+<table>
+<thead>
+<tr>
+<th>الهاتف</th>
+<th>الصلاحية</th>
+<th>إدارة</th>
+</tr>
+</thead>
+<tbody id="uList"></tbody>
+</table>
+
+<button onclick="logout()">تسجيل خروج</button>
+
+</div>
+
+<script>
+let user = JSON.parse(localStorage.getItem("loginUser"));
+if(!user || user.role!=="admin") window.location.href="index.html";
+
+let users = JSON.parse(localStorage.getItem("users"));
+
+function addUser(){
+    let p = nPhone.value.trim();
+    let pw = nPass.value.trim();
+    let r = nRole.value;
+
+    if(p=="" || pw=="") return;
+
+    users.push({phone:p, pass:pw, role:r});
+    localStorage.setItem("users", JSON.stringify(users));
+
+    nPhone.value = "";
+    nPass.value = "";
+
+    uMsg.innerText = "تم إضافة المستخدم";
+    render();
+}
+
+function render(){
+    uList.innerHTML = "";
+    users.forEach((u,i)=>{
+        uList.innerHTML += `
+        <tr>
+            <td>${u.phone}</td>
+            <td>${u.role}</td>
+            <td>
+                <button onclick="openUser('${u.phone}')">فتح</button>
+                <button onclick="delUser(${i})" style="background:red;">حذف</button>
+            </td>
+        </tr>
+        `;
+    });
+}
+
+function openUser(phone){
+    localStorage.setItem("editUserPhone", phone);
+    window.location.href="home.html";
+}
+
+function delUser(i){
+    users.splice(i,1);
+    localStorage.setItem("users", JSON.stringify(users));
+    render();
+}
+
+function logout(){
+    localStorage.removeItem("loginUser");
+    window.location.href="index.html";
+}
+
+render();
+</script>
+
+</body>
+</html>
