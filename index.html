@@ -32,12 +32,23 @@
     <div id="regBox" style="display:none;margin-top:25px;">
         <h3>تسجيل مستخدم جديد</h3>
 
-        <input id="rPhone" placeholder="رقم الهاتف الجديد" class="in">
-        <input id="rPass" placeholder="كلمة المرور الجديدة" class="in">
+        <input id="rPhone" placeholder="رقم الهاتف" class="in">
+        <input id="rPass" placeholder="كلمة المرور" class="in">
 
-        <button onclick="registerUser()" class="btn-green">إنشاء حساب</button>
+        <button onclick="registerUser()" class="btn-green">إنشاء الحساب</button>
 
         <p id="rMsg" style="color:red;"></p>
+    </div>
+
+    <!-- صندوق الحظر -->
+    <div id="banBox" style="display:none;margin-top:25px;padding:15px;border:2px solid red;border-radius:10px;background:#ffe5e5;">
+        <h3 style="color:red;">⚠ تم حظر الحساب</h3>
+        <p>عليك تسديد الاشتراك <b style="color:red;">5000 دينار</b><br>
+        إلى زين كاش: <b>07816175944</b></p>
+
+        <button onclick="openWhatsApp()" style="background:#1da851;color:white;padding:12px;width:100%;border:none;border-radius:8px;font-size:18px;">
+            اتصل واتساب 07816175944
+        </button>
     </div>
 
 </div>
@@ -81,14 +92,30 @@ function login(){
         if(!snap.exists()){ msg.innerText="المستخدم غير موجود"; return; }
 
         let u = snap.val();
-        if(u.pass !== pw){ msg.innerText="كلمة المرور خطأ"; return; }
-        if(u.ban){ msg.innerText="الحساب محظور"; return; }
+
+        if(u.ban){
+            banBox.style.display = "block";
+            return;
+        }
+
+        if(u.pass !== pw){
+            msg.innerText = "كلمة المرور خطأ";
+            return;
+        }
+
+        if(u.expire && Date.now() > u.expire){
+            msg.innerText = "انتهت صلاحية الحساب";
+            return;
+        }
 
         localStorage.setItem("loginUser", JSON.stringify(u));
         localStorage.setItem("loginPhone", p);
 
-        if(u.role === "admin") window.location="admin.html";
-        else window.location="home.html";
+        if(u.role === "admin"){
+            window.location="admin.html";
+        } else {
+            window.location="home.html";
+        }
     });
 }
 
@@ -111,7 +138,7 @@ function registerUser(){
     });
 
     rMsg.style.color="green";
-    rMsg.innerText="تم تسجيل المستخدم";
+    rMsg.innerText="تم التسجيل";
 
     setTimeout(()=>{
         regBox.style.display="none";
@@ -121,8 +148,12 @@ function registerUser(){
     },1000);
 }
 
+function openWhatsApp(){
+    window.location.href = "https://wa.me/9647816175944";
+}
+
 function goAdmin(){
-    window.location.href = "admin.html";
+    window.location="admin.html";
 }
 </script>
 
