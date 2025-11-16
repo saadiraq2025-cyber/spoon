@@ -21,9 +21,7 @@
     <input id="pass" type="password" placeholder="كلمة المرور" class="in">
 
     <button onclick="login()" class="btn-green">دخول</button>
-
     <button onclick="showRegister()" class="btn-blue">تسجيل مستخدم جديد</button>
-
     <button onclick="goAdmin()" class="btn-dark">لوحة التحكم</button>
 
     <p id="msg" style="color:red;margin-top:10px;"></p>
@@ -32,10 +30,10 @@
     <div id="regBox" style="display:none;margin-top:25px;">
         <h3>تسجيل مستخدم جديد</h3>
 
-        <input id="rPhone" placeholder="رقم الهاتف" class="in">
-        <input id="rPass" placeholder="كلمة المرور" class="in">
+        <input id="rPhone" placeholder="رقم الهاتف الجديد" class="in">
+        <input id="rPass" placeholder="كلمة المرور الجديدة" class="in">
 
-        <button onclick="registerUser()" class="btn-green">إنشاء الحساب</button>
+        <button onclick="registerUser()" class="btn-green">إنشاء حساب</button>
 
         <p id="rMsg" style="color:red;"></p>
     </div>
@@ -58,6 +56,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
 
 <script>
+// إعداد فيربيز
 const firebaseConfig = {
   apiKey: "AIzaSyA_3TFx5dUR3JbcXj5jFIZ_mpjWeco7FVo",
   authDomain: "tktkbaghdad.firebaseapp.com",
@@ -67,13 +66,13 @@ const firebaseConfig = {
   messagingSenderId: "939931176033",
   appId: "1:939931176033:web:1d44fa5fd01ee75b326e20"
 };
-
 firebase.initializeApp(firebaseConfig);
+
 const db = firebase.database();
 
-// إنشاء مدير إذا غير موجود
-db.ref("users/07700000000").once("value", s => {
-    if(!s.exists()){
+// إنشاء أدمن إذا غير موجود
+db.ref("users/07700000000").once("value", snap => {
+    if(!snap.exists()){
         db.ref("users/07700000000").set({
             phone:"07700000000",
             pass:"1234",
@@ -84,50 +83,64 @@ db.ref("users/07700000000").once("value", s => {
     }
 });
 
+// تسجيل الدخول
 function login(){
     let p = phone.value.trim();
     let pw = pass.value.trim();
 
+    if(p=="" || pw==""){
+        msg.innerText = "أدخل رقم الهاتف وكلمة المرور";
+        return;
+    }
+
     db.ref("users/" + p).once("value", snap => {
-        if(!snap.exists()){ msg.innerText="المستخدم غير موجود"; return; }
+        if(!snap.exists()){
+            msg.innerText = "المستخدم غير موجود";
+            return;
+        }
 
         let u = snap.val();
 
+        // محظور
         if(u.ban){
             banBox.style.display = "block";
             return;
         }
 
+        // كلمة المرور
         if(u.pass !== pw){
             msg.innerText = "كلمة المرور خطأ";
             return;
         }
 
-        if(u.expire && Date.now() > u.expire){
+        // منتهي الاشتراك
+        if(u.expire > 0 && Date.now() > u.expire){
             msg.innerText = "انتهت صلاحية الحساب";
             return;
         }
 
+        // حفظ بيانات الدخول
         localStorage.setItem("loginUser", JSON.stringify(u));
-        localStorage.setItem("loginPhone", p);
+        localStorage.setItem("loginPhone", u.phone);
 
+        // نقل المستخدم للصفحة المطلوبة
         if(u.role === "admin"){
-            window.location="admin.html";
+            window.location = "admin.html";
         } else {
-            window.location="home.html";
+            window.location = "home.html";
         }
     });
 }
 
-function showRegister(){
-    regBox.style.display = "block";
-}
-
+// تسجيل مستخدم جديد
 function registerUser(){
     let p = rPhone.value.trim();
     let pw = rPass.value.trim();
 
-    if(p=="" || pw==""){ rMsg.innerText="أكمل الحقول"; return; }
+    if(p=="" || pw==""){
+        rMsg.innerText = "أدخل البيانات";
+        return;
+    }
 
     db.ref("users/" + p).set({
         phone:p,
@@ -142,10 +155,14 @@ function registerUser(){
 
     setTimeout(()=>{
         regBox.style.display="none";
+        rMsg.innerText="";
         rPhone.value="";
         rPass.value="";
-        rMsg.innerText="";
-    },1000);
+    }, 900);
+}
+
+function showRegister(){
+    regBox.style.display = "block";
 }
 
 function openWhatsApp(){
