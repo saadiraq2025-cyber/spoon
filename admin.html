@@ -58,7 +58,7 @@ let usersRef = db.ref("users");
 function addUser(){
     let p = nPhone.value.trim();
     let pw = nPass.value.trim();
-    if(p=="" || pw=="") return;
+    if(p=="" || pw==""){ alert("أكمل الحقول"); return; }
 
     usersRef.child(p).set({
         phone:p,
@@ -89,38 +89,32 @@ function loadUsers(){
                 <td>${exp}</td>
                 <td>
                     <button onclick="openDebts('${ph}')">فتح</button>
-                    <button onclick="editUser('${ph}')">تعديل</button>
+                    <button onclick="editUser('${ph}')" class="btn-blue">تعديل</button>
                     <button onclick="toggleBan('${ph}',${u.ban})" style="background:orange;">
-                        ${u.ban?"إلغاء حظر":"حظر"}
+                        ${u.ban?"إلغاء الحظر":"حظر"}
                     </button>
                     <button onclick="activate('${ph}')" style="background:#444;">تفعيل</button>
                     <button onclick="deleteUser('${ph}')" style="background:red;">حذف</button>
                 </td>
-            </tr>
-            `;
+            </tr>`;
         });
     });
 }
 
-function openDebts(phone){
-    localStorage.setItem("loginPhone", phone);
-    window.location="home.html";
-}
+// تعديل المستخدم بالكامل (رقم + كلمة مرور)
+function editUser(oldPhone){
+    let newPhone = prompt("رقم الهاتف الجديد:", oldPhone);
+    if(!newPhone) return;
 
-// ✔ تعديل المستخدم
-function editUser(phone){
-    let newP = prompt("رقم الهاتف الجديد:", phone);
-    if(!newP) return;
+    db.ref("users/"+oldPhone).once("value", s=>{
+        let u = s.val();
 
-    db.ref("users/"+phone).once("value", snap=>{
-        let u = snap.val();
         let newPass = prompt("كلمة المرور الجديدة:", u.pass);
-
         if(!newPass) return;
 
-        // انشاء مستخدم جديد برقم جديد
-        db.ref("users/"+newP).set({
-            phone:newP,
+        // إضافة مستخدم جديد
+        db.ref("users/"+newPhone).set({
+            phone:newPhone,
             pass:newPass,
             role:u.role,
             ban:u.ban,
@@ -128,20 +122,20 @@ function editUser(phone){
         });
 
         // نقل الديون
-        db.ref("debts/"+phone).once("value", dSnap=>{
-            db.ref("debts/"+newP).set(dSnap.val());
-            db.ref("debts/"+phone).remove();
+        db.ref("debts/"+oldPhone).once("value", dSnap=>{
+            db.ref("debts/"+newPhone).set(dSnap.val());
+            db.ref("debts/"+oldPhone).remove();
         });
 
         // حذف القديم
-        db.ref("users/"+phone).remove();
+        db.ref("users/"+oldPhone).remove();
 
         loadUsers();
     });
 }
 
-function toggleBan(phone, b){
-    usersRef.child(phone).update({ban:!b});
+function toggleBan(phone, s){
+    usersRef.child(phone).update({ban:!s});
     loadUsers();
 }
 
@@ -149,8 +143,9 @@ function activate(phone){
     let days = prompt("عدد الأيام:");
     if(!days || isNaN(days)) return;
 
-    let ms = days*24*60*60*1000;
-    usersRef.child(phone).update({expire: Date.now()+ms});
+    let ms = days * 24 * 60 * 60 * 1000;
+    usersRef.child(phone).update({expire:Date.now()+ms});
+
     loadUsers();
 }
 
@@ -162,6 +157,11 @@ function deleteUser(phone){
     }
 }
 
+function openDebts(phone){
+    localStorage.setItem("loginPhone", phone);
+    window.location="home.html";
+}
+
 function logout(){
     localStorage.removeItem("loginUser");
     window.location="index.html";
@@ -169,6 +169,16 @@ function logout(){
 
 loadUsers();
 </script>
+
+<style>
+.btn-blue{background:#0077cc;color:white;padding:6px 10px;border:none;border-radius:6px;}
+.in{width:100%;padding:12px;margin-top:8px;border-radius:6px;border:1px solid #aaa;}
+.btn-green{width:100%;padding:12px;margin-top:10px;border:none;border-radius:6px;background:#2e7d32;color:white;}
+.btn-dark{width:100%;padding:12px;margin-top:10px;border:none;border-radius:6px;background:#333;color:white;}
+.btn-red{width:100%;padding:12px;border:none;border-radius:6px;background:red;color:white;}
+table{width:100%;margin-top:15px;border-collapse:collapse;}
+td,th{border:1px solid #ccc;padding:8px;text-align:center;}
+</style>
 
 </body>
 </html>
