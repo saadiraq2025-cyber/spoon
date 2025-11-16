@@ -22,7 +22,24 @@
 
     <button onclick="login()" class="btn-green">دخول</button>
 
+    <button onclick="showRegister()" class="btn-blue">تسجيل مستخدم جديد</button>
+
+    <button onclick="goAdmin()" class="btn-dark">لوحة التحكم</button>
+
     <p id="msg" style="color:red;margin-top:10px;"></p>
+
+    <!-- صندوق التسجيل -->
+    <div id="regBox" style="display:none;margin-top:25px;">
+        <h3>تسجيل مستخدم جديد</h3>
+
+        <input id="rPhone" placeholder="رقم الهاتف الجديد" class="in">
+        <input id="rPass" placeholder="كلمة المرور الجديدة" class="in">
+
+        <button onclick="registerUser()" class="btn-green">إنشاء حساب</button>
+
+        <p id="rMsg" style="color:red;"></p>
+    </div>
+
 </div>
 
 <!-- Firebase -->
@@ -43,7 +60,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// إنشاء حساب مدير افتراضي مرة واحدة فقط
+// إنشاء مدير إذا غير موجود
 db.ref("users/07700000000").once("value", s => {
     if(!s.exists()){
         db.ref("users/07700000000").set({
@@ -61,37 +78,51 @@ function login(){
     let pw = pass.value.trim();
 
     db.ref("users/" + p).once("value", snap => {
-        if(!snap.exists()){
-            msg.innerText = "المستخدم غير موجود";
-            return;
-        }
+        if(!snap.exists()){ msg.innerText="المستخدم غير موجود"; return; }
 
         let u = snap.val();
-
-        if(u.pass !== pw){
-            msg.innerText = "كلمة المرور خطأ";
-            return;
-        }
-
-        if(u.ban){
-            msg.innerText = "الحساب محظور – راجع الإدارة";
-            return;
-        }
-
-        if(u.expire && Date.now() > u.expire){
-            msg.innerText = "انتهت صلاحية الحساب";
-            return;
-        }
+        if(u.pass !== pw){ msg.innerText="كلمة المرور خطأ"; return; }
+        if(u.ban){ msg.innerText="الحساب محظور"; return; }
 
         localStorage.setItem("loginUser", JSON.stringify(u));
         localStorage.setItem("loginPhone", p);
 
-        if(u.role === "admin"){
-            window.location.href = "admin.html";
-        } else {
-            window.location.href = "home.html";
-        }
+        if(u.role === "admin") window.location="admin.html";
+        else window.location="home.html";
     });
+}
+
+function showRegister(){
+    regBox.style.display = "block";
+}
+
+function registerUser(){
+    let p = rPhone.value.trim();
+    let pw = rPass.value.trim();
+
+    if(p=="" || pw==""){ rMsg.innerText="أكمل الحقول"; return; }
+
+    db.ref("users/" + p).set({
+        phone:p,
+        pass:pw,
+        role:"user",
+        ban:false,
+        expire:0
+    });
+
+    rMsg.style.color="green";
+    rMsg.innerText="تم تسجيل المستخدم";
+
+    setTimeout(()=>{
+        regBox.style.display="none";
+        rPhone.value="";
+        rPass.value="";
+        rMsg.innerText="";
+    },1000);
+}
+
+function goAdmin(){
+    window.location.href = "admin.html";
 }
 </script>
 
