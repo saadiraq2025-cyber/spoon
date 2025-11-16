@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>الديون</title>
+<title>دفتر الديون</title>
 <link rel="stylesheet" href="style.css">
 </head>
 
@@ -12,15 +12,20 @@
 <h2>دفتر الديون</h2>
 
 <div>
-<input id="name" placeholder="اسم المدين">
-<input id="amount" type="number" placeholder="المبلغ">
+<input id="dName" placeholder="الاسم">
+<select id="dType">
+    <option value="مدين">مدين</option>
+    <option value="مدان">مدان</option>
+</select>
+<input id="dAmount" type="number" placeholder="المبلغ">
 <button onclick="addDebt()">إضافة</button>
 </div>
 
 <table>
 <thead>
 <tr>
-<th>المدين</th>
+<th>الاسم</th>
+<th>النوع</th>
 <th>المبلغ</th>
 <th>التاريخ</th>
 <th>إدارة</th>
@@ -31,7 +36,6 @@
 
 <div class="totalBox">المجموع الكلي: <span id="total">0</span> دينار</div>
 
-<button onclick="exportExcel()">تصدير Excel</button>
 <button onclick="logout()" style="background:red;margin-top:15px;">خروج</button>
 
 </div>
@@ -40,6 +44,7 @@
 let loginUser = JSON.parse(localStorage.getItem("loginUser"));
 if(!loginUser) window.location.href="index.html";
 
+// رقم المستخدم الذي يتم عرض ديونه
 let userPhone = loginUser.role==="admin"
     ? localStorage.getItem("editUserPhone")
     : loginUser.phone;
@@ -64,11 +69,12 @@ function render(){
         list.innerHTML += `
         <tr>
             <td>${d.name}</td>
+            <td>${d.type}</td>
             <td>${d.amount}</td>
             <td>${d.date}</td>
             <td>
                 <button onclick="pay(${i})">تسديد</button>
-                <button onclick="edit(${i})" style="background:orange;">تعديل</button>
+                <button onclick="addMore(${i})" style="background:orange;">إضافة مبلغ</button>
             </td>
         </tr>
         `;
@@ -78,19 +84,20 @@ function render(){
 }
 
 function addDebt(){
-    if(name.value=="" || amount.value=="") return;
+    if(dName.value=="" || dAmount.value=="") return;
 
     allDebts[userPhone].push({
-        name:name.value,
-        amount:amount.value,
+        name:dName.value,
+        type:dType.value,
+        amount:dAmount.value,
         date:new Date().toLocaleDateString()
     });
 
     save();
     render();
 
-    name.value="";
-    amount.value="";
+    dName.value="";
+    dAmount.value="";
 }
 
 function pay(i){
@@ -99,28 +106,14 @@ function pay(i){
     render();
 }
 
-function edit(i){
+function addMore(i){
     let d = allDebts[userPhone][i];
-    let newAmount = prompt("المبلغ الجديد:", d.amount);
-    if(newAmount){
-        d.amount = newAmount;
+    let more = prompt("المبلغ المضاف:");
+    if(more){
+        d.amount = Number(d.amount) + Number(more);
         save();
         render();
     }
-}
-
-function exportExcel(){
-    let data = "المدين,المبلغ,التاريخ\n";
-    allDebts[userPhone].forEach(d=>{
-        data += `${d.name},${d.amount},${d.date}\n`;
-    });
-
-    let blob = new Blob([data], {type:"text/csv"});
-    let url = URL.createObjectURL(blob);
-    let a = document.createElement("a");
-    a.href = url;
-    a.download = "debts.csv";
-    a.click();
 }
 
 function logout(){
