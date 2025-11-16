@@ -2,25 +2,69 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>تسجيل دخول - الديون</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>سجل الديون - الصفحة الرئيسية</title>
+
 <link rel="stylesheet" href="style.css">
+
+<style>
+body{
+    background:#f2f2f2;
+    font-family: Tahoma;
+}
+.main-box{
+    max-width: 420px;
+    margin: auto;
+    background:white;
+    margin-top: 40px;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 0 10px #ccc;
+    text-align: center;
+}
+.main-box h2{
+    margin-bottom: 20px;
+    font-size: 26px;
+}
+.main-btn{
+    width: 100%;
+    padding: 14px;
+    border-radius: 8px;
+    border:none;
+    background:#2e7d32;
+    color:white;
+    font-size:18px;
+    margin-top:10px;
+    cursor:pointer;
+}
+.small-link{
+    display:block;
+    margin-top:15px;
+    font-size:16px;
+    color:#0077cc;
+}
+input{
+    font-size:18px !important;
+}
+</style>
+
 </head>
 
 <body>
-<div class="container">
-<h2>تسجيل الدخول</h2>
 
-<input id="phone" placeholder="رقم الهاتف">
-<input id="pass" type="password" placeholder="كلمة المرور">
+<div class="main-box">
+    <h2>سجل الديون</h2>
 
-<button onclick="login()">دخول</button>
+    <input id="phone" placeholder="رقم الهاتف">
+    <input id="pass" type="password" placeholder="كلمة المرور">
 
-<p>
-ليس لديك حساب؟  
-<a href="register.html">تسجيل جديد</a>
-</p>
+    <button class="main-btn" onclick="login()">تسجيل الدخول</button>
 
-<p id="msg" style="color:red;"></p>
+    <a href="register.html" class="small-link">تسجيل مستخدم جديد</a>
+
+    <button class="main-btn" style="background:#444;" onclick="goDebt()">سجل ديون</button>
+
+    <p id="msg" style="color:red;margin-top:10px;"></p>
 </div>
 
 <script>
@@ -28,7 +72,13 @@ let users = JSON.parse(localStorage.getItem("users") || "[]");
 
 // إنشاء حساب مدير افتراضي
 if(users.length === 0){
-    users.push({ phone:"07700000000", pass:"1234", role:"admin", ban:false, expire:0 });
+    users.push({ 
+        phone:"07700000000", 
+        pass:"1234", 
+        role:"admin",
+        ban:false,
+        expire:0 
+    });
     localStorage.setItem("users", JSON.stringify(users));
 }
 
@@ -48,10 +98,9 @@ function login(){
         return;
     }
 
-    // فحص انتهاء صلاحية التفعيل
     if(user.role === "user" && user.expire !== 0){
         if(Date.now() > user.expire){
-            msg.innerText = "انتهت صلاحية الحساب. يرجى التواصل مع الإدارة";
+            msg.innerText = "انتهت صلاحية الحساب";
             return;
         }
     }
@@ -63,6 +112,10 @@ function login(){
     } else {
         window.location.href = "home.html";
     }
+}
+
+function goDebt(){
+    window.location.href = "home.html"; 
 }
 </script>
 
