@@ -42,6 +42,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
 
 <script>
+// إعداد فيربيز
 firebase.initializeApp({
   apiKey: "AIzaSyA_3TFx5dUR3JbcXj5jFIZ_mpjWeco7FVo",
   authDomain: "tktkbaghdad.firebaseapp.com",
@@ -53,131 +54,225 @@ firebase.initializeApp({
 });
 
 const db = firebase.database();
-let usersRef = db.ref("users");
+const usersRef = db.ref("users");
 
-function addUser(){
-    let p = nPhone.value.trim();
-    let pw = nPass.value.trim();
-    if(p=="" || pw==""){ alert("أكمل الحقول"); return; }
-
-    usersRef.child(p).set({
-        phone:p,
-        pass:pw,
-        role:"user",
-        ban:false,
-        expire:0
-    });
-
-    nPhone.value="";
-    nPass.value="";
-    loadUsers();
+// تأكد أن الداخل هو أدمن
+let admin = JSON.parse(localStorage.getItem("loginUser"));
+if (!admin || admin.role !== "admin") {
+    window.location = "index.html";
 }
 
-function loadUsers(){
-    usersRef.once("value", snap=>{
-        uList.innerHTML="";
+// إضافة مستخدم جديد
+function addUser(){
+    let p  = nPhone.value.trim();
+    let pw = nPass.value.trim();
+    if(p === "" || pw === ""){
+        alert("أكمل الحقول");
+        return;
+    }
 
-        snap.forEach(ch=>{
-            let u = ch.val();
+    usersRef.child(p).set({
+        phone:  p,
+        pass:   pw,
+        role:  "user",
+        ban:   false,
+        expire:0
+    }, () => {
+        nPhone.value = "";
+        nPass.value  = "";
+        loadUsers();
+    });
+}
+
+// تحميل جميع المستخدمين
+function loadUsers(){
+    usersRef.once("value", snap => {
+        uList.innerHTML = "";
+
+        snap.forEach(ch => {
+            let u  = ch.val();
             let ph = u.phone;
-            let exp = u.expire == 0 ? "دائم" : new Date(u.expire).toLocaleString();
+            let expText = (u.expire && u.expire !== 0)
+                ? new Date(u.expire).toLocaleString()
+                : "دائم";
 
             uList.innerHTML += `
             <tr>
                 <td>${ph}</td>
-                <td>${u.ban?"محظور":"نشط"}</td>
-                <td>${exp}</td>
+                <td>${u.ban ? "محظور" : "نشط"}</td>
+                <td>${expText}</td>
                 <td>
                     <button onclick="openDebts('${ph}')">فتح</button>
                     <button onclick="editUser('${ph}')" class="btn-blue">تعديل</button>
-                    <button onclick="toggleBan('${ph}',${u.ban})" style="background:orange;">
-                        ${u.ban?"إلغاء الحظر":"حظر"}
+                    <button onclick="toggleBan('${ph}', ${u.ban})" style="background:orange;">
+                        ${u.ban ? "إلغاء الحظر" : "حظر"}
                     </button>
                     <button onclick="activate('${ph}')" style="background:#444;">تفعيل</button>
                     <button onclick="deleteUser('${ph}')" style="background:red;">حذف</button>
                 </td>
-            </tr>`;
+            </tr>
+            `;
         });
     });
 }
 
-// تعديل المستخدم بالكامل (رقم + كلمة مرور)
-function editUser(oldPhone){
-    let newPhone = prompt("رقم الهاتف الجديد:", oldPhone);
-    if(!newPhone) return;
-
-    db.ref("users/"+oldPhone).once("value", s=>{
-        let u = s.val();
-
-        let newPass = prompt("كلمة المرور الجديدة:", u.pass);
-        if(!newPass) return;
-
-        // إضافة مستخدم جديد
-        db.ref("users/"+newPhone).set({
-            phone:newPhone,
-            pass:newPass,
-            role:u.role,
-            ban:u.ban,
-            expire:u.expire
-        });
-
-        // نقل الديون
-        db.ref("debts/"+oldPhone).once("value", dSnap=>{
-            db.ref("debts/"+newPhone).set(dSnap.val());
-            db.ref("debts/"+oldPhone).remove();
-        });
-
-        // حذف القديم
-        db.ref("users/"+oldPhone).remove();
-
-        loadUsers();
-    });
-}
-
-function toggleBan(phone, s){
-    usersRef.child(phone).update({ban:!s});
-    loadUsers();
-}
-
-function activate(phone){
-    let days = prompt("عدد الأيام:");
-    if(!days || isNaN(days)) return;
-
-    let ms = days * 24 * 60 * 60 * 1000;
-    usersRef.child(phone).update({expire:Date.now()+ms});
-
-    loadUsers();
-}
-
-function deleteUser(phone){
-    if(confirm("حذف المستخدم نهائياً؟")){
-        db.ref("users/"+phone).remove();
-        db.ref("debts/"+phone).remove();
-        loadUsers();
-    }
-}
-
+// فتح ديون المستخدم
 function openDebts(phone){
     localStorage.setItem("loginPhone", phone);
-    window.location="home.html";
+    window.location = "home.html";
 }
 
+// ✅ تعديل المستخدم (رقم الهاتف + كلمة المرور) بدون حذفه بالغلط
+function editUser(oldPhone){
+    // جلب بيانات المستخدم القديمة
+    db.ref("users/" + oldPhone).once("value", snap => {
+        if(!snap.exists()){
+            alert("المستخدم غير موجود");
+            return;
+        }
+
+        let u = snap.val();
+
+        // طلب رقم جديد
+        let newPhone = prompt("رقم الهاتف الجديد:", u.phone || oldPhone);
+        if(!newPhone) return;
+
+        // طلب كلمة مرور جديدة
+        let newPass = prompt("كلمة المرور الجديدة:", u.pass || "");
+        if(!newPass) return;
+
+        // إذا الرقم لم يتغير → فقط عدّل كلمة المرور
+        if(newPhone === oldPhone){
+            db.ref("users/" + oldPhone).update({
+                phone: newPhone,
+                pass:  newPass
+            }, () => {
+                alert("تم تعديل المستخدم");
+                loadUsers();
+            });
+            return;
+        }
+
+        // إذا الرقم تغيّر → إنشاء مستخدم جديد ونقل الديون
+        let newUserData = {
+            phone: newPhone,
+            pass:  newPass,
+            role:  u.role,
+            ban:   u.ban || false,
+            expire:u.expire || 0
+        };
+
+        // 1) إنشاء المستخدم الجديد
+        db.ref("users/" + newPhone).set(newUserData, () => {
+
+            // 2) نقل الديون من الرقم القديم للجديد
+            db.ref("debts/" + oldPhone).once("value", dSnap => {
+                if(dSnap.exists()){
+                    db.ref("debts/" + newPhone).set(dSnap.val(), () => {
+                        db.ref("debts/" + oldPhone).remove();
+                    });
+                }
+            });
+
+            // 3) حذف المستخدم القديم بعد النقل
+            db.ref("users/" + oldPhone).remove(() => {
+                alert("تم تعديل المستخدم ونقل الديون للرقم الجديد");
+                loadUsers();
+            });
+
+        });
+    });
+}
+
+// حظر / إلغاء حظر
+function toggleBan(phone, current){
+    usersRef.child(phone).update({ ban: !current }, () => {
+        loadUsers();
+    });
+}
+
+// تفعيل بالايام
+function activate(phone){
+    let days = prompt("عدد أيام التفعيل:");
+    if(!days || isNaN(days)) return;
+
+    let ms = Number(days) * 24 * 60 * 60 * 1000;
+    let expireTime = Date.now() + ms;
+
+    usersRef.child(phone).update({ expire: expireTime }, () => {
+        loadUsers();
+    });
+}
+
+// حذف مستخدم بالكامل مع ديونه
+function deleteUser(phone){
+    if(!confirm("هل تريد حذف المستخدم وكل ديونه؟")) return;
+
+    db.ref("users/" + phone).remove(() => {
+        db.ref("debts/" + phone).remove(() => {
+            loadUsers();
+        });
+    });
+}
+
+// تسجيل خروج
 function logout(){
     localStorage.removeItem("loginUser");
-    window.location="index.html";
+    window.location = "index.html";
 }
 
+// تحميل المستخدمين عند فتح الصفحة
 loadUsers();
 </script>
 
 <style>
-.btn-blue{background:#0077cc;color:white;padding:6px 10px;border:none;border-radius:6px;}
-.in{width:100%;padding:12px;margin-top:8px;border-radius:6px;border:1px solid #aaa;}
-.btn-green{width:100%;padding:12px;margin-top:10px;border:none;border-radius:6px;background:#2e7d32;color:white;}
-.btn-dark{width:100%;padding:12px;margin-top:10px;border:none;border-radius:6px;background:#333;color:white;}
-.btn-red{width:100%;padding:12px;border:none;border-radius:6px;background:red;color:white;}
-table{width:100%;margin-top:15px;border-collapse:collapse;}
-td,th{border:1px solid #ccc;padding:8px;text-align:center;}
+.in{
+    width:100%;
+    padding:10px;
+    margin-top:8px;
+    border-radius:6px;
+    border:1px solid #aaa;
+    font-size:16px;
+}
+.btn-green{
+    width:100%;
+    padding:10px;
+    margin-top:10px;
+    border:none;
+    border-radius:6px;
+    background:#2e7d32;
+    color:white;
+    font-size:16px;
+    cursor:pointer;
+}
+.btn-blue{
+    padding:6px 10px;
+    border:none;
+    border-radius:6px;
+    background:#0077cc;
+    color:white;
+    cursor:pointer;
+}
+.btn-red{
+    width:100%;
+    padding:10px;
+    border:none;
+    border-radius:6px;
+    background:red;
+    color:white;
+    font-size:16px;
+    cursor:pointer;
+}
+table{
+    width:100%;
+    border-collapse:collapse;
+    margin-top:15px;
+}
+td, th{
+    border:1px solid #ccc;
+    padding:8px;
+    text-align:center;
+}
 </style>
 
 </body>
