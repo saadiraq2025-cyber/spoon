@@ -81,12 +81,11 @@ body{
     <input id="pass" type="password" placeholder="كلمة المرور">
 
     <button class="main-btn" onclick="login()">تسجيل الدخول</button>
-
     <button class="main-btn secondary" onclick="showRegister()">تسجيل مستخدم جديد</button>
 
     <p id="msg" style="color:red;margin-top:10px;"></p>
 
-    <!-- تسجيل جديد داخل الصفحة -->
+    <!-- صندوق التسجيل -->
     <div id="registerBox" style="display:none;">
         <h3 style="margin-top:20px;">تسجيل مستخدم جديد</h3>
 
@@ -110,100 +109,114 @@ body{
 
 </div>
 
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+
 <script>
-let users = JSON.parse(localStorage.getItem("users") || "[]");
+// إعداد فيربيز
+const firebaseConfig = {
+  apiKey: "AIzaSyA_3TFx5dUR3JbcXj5jFIZ_mpjWeco7FVo",
+  authDomain: "tktkbaghdad.firebaseapp.com",
+  databaseURL: "https://tktkbaghdad-default-rtdb.firebaseio.com",
+  projectId: "tktkbaghdad",
+  storageBucket: "tktkbaghdad.firebasestorage.app",
+  messagingSenderId: "939931176033",
+  appId: "1:939931176033:web:1d44fa5fd01ee75b326e20"
+};
 
-// إنشاء مدير أول مرة
-if(users.length === 0){
-    users.push({
-        phone:"07700000000",
-        pass:"1234",
-        role:"admin",
-        ban:false,
-        expire:0
-    });
-    localStorage.setItem("users", JSON.stringify(users));
-}
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+</script>
 
+<script>
 // تسجيل الدخول
 function login(){
-    banBox.style.display = "none";
     msg.innerText = "";
+    banBox.style.display = "none";
 
     let p = phone.value.trim();
     let pw = pass.value.trim();
 
-    let user = users.find(u => u.phone === p && u.pass === pw);
+    db.ref("users/" + p).once("value", snap => {
+        if(!snap.exists()){
+            msg.innerText = "مستخدم غير موجود";
+            return;
+        }
 
-    if(!user){
-        msg.innerText = "بيانات خاطئة";
-        return;
-    }
+        let user = snap.val();
 
-    if(user.ban){
-        // اظهار صندوق الدفع
-        banBox.style.display = "block";
-        return;
-    }
+        if(user.pass !== pw){
+            msg.innerText = "كلمة المرور غير صحيحة";
+            return;
+        }
 
-    if(user.role === "user" && user.expire !== 0){
-        if(Date.now() > user.expire){
+        if(user.ban === true){
+            banBox.style.display = "block";
+            return;
+        }
+
+        if(user.expire && Date.now() > user.expire){
             msg.innerText = "انتهت صلاحية الحساب";
             return;
         }
-    }
 
-    localStorage.setItem("loginUser", JSON.stringify(user));
+        // نجاح
+        localStorage.setItem("loginUser", JSON.stringify(user));
+        localStorage.setItem("loginPhone", p);
 
-    if(user.role === "admin"){
-        window.location.href = "admin.html";
-    } else {
-        window.location.href = "home.html";
-    }
+        if(user.role === "admin"){
+            window.location = "admin.html";
+        } else {
+            window.location = "home.html";
+        }
+    });
 }
 
-// فتح صندوق التسجيل
+// فتح التسجيل
 function showRegister(){
     registerBox.style.display = "block";
 }
 
-// إنشاء مستخدم جديد
+// تسجيل مستخدم جديد
 function createUser(){
     let p = rphone.value.trim();
     let pw = rpass.value.trim();
 
-    if(p === "" || pw === ""){
+    if(p=="" || pw==""){
         rmsg.innerText = "أكمل الحقول";
         return;
     }
 
-    if(users.find(u => u.phone === p)){
-        rmsg.innerText = "رقم الهاتف موجود مسبقاً";
-        return;
-    }
+    db.ref("users/" + p).once("value", snap => {
+        if(snap.exists()){
+            rmsg.innerText = "رقم الهاتف مستخدم مسبقاً";
+            return;
+        }
 
-    users.push({
-        phone:p,
-        pass:pw,
-        role:"user",
-        ban:false,
-        expire:0
+        let newUser = {
+            phone:p,
+            pass:pw,
+            role:"user",
+            ban:false,
+            expire:0
+        };
+
+        db.ref("users/" + p).set(newUser);
+
+        rmsg.style.color = "green";
+        rmsg.innerText = "تم التسجيل بنجاح";
+
+        setTimeout(()=>{
+            registerBox.style.display = "none";
+            rphone.value = "";
+            rpass.value = "";
+            rmsg.innerText = "";
+        }, 1000);
     });
-
-    localStorage.setItem("users", JSON.stringify(users));
-
-    rmsg.style.color = "green";
-    rmsg.innerText = "تم إنشاء الحساب";
-
-    setTimeout(()=>{
-        rmsg.innerText="";
-        registerBox.style.display = "none";
-        rphone.value="";
-        rpass.value="";
-    },1000);
 }
 
-// فتح الواتساب
+// واتساب
 function openWhatsApp(){
     window.location.href = "https://wa.me/9647816175944";
 }
