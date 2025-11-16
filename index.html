@@ -4,109 +4,25 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title>سجل الديون - تسجيل الدخول</title>
-
 <link rel="stylesheet" href="style.css">
-
-<style>
-body{
-    background:#f2f2f2;
-    font-family: Tahoma;
-}
-.main-box{
-    max-width: 420px;
-    margin: auto;
-    background:white;
-    margin-top: 40px;
-    padding: 25px;
-    border-radius: 12px;
-    box-shadow: 0 0 10px #ccc;
-    text-align: center;
-}
-.logo{
-    width: 150px;
-    height: 150px;
-    background:#ddd;
-    border-radius: 50%;
-    margin: auto;
-    margin-bottom: 25px;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    font-size:60px;
-    color:#333;
-}
-.main-btn{
-    width: 100%;
-    padding: 14px;
-    border-radius: 8px;
-    border:none;
-    background:#2e7d32;
-    color:white;
-    font-size:18px;
-    margin-top:10px;
-    cursor:pointer;
-}
-.main-btn.secondary{
-    background:#0077cc;
-}
-.pay-box{
-    background:#fff6f6;
-    padding:15px;
-    margin-top:15px;
-    border-radius:10px;
-    border:1px solid #ffb3b3;
-}
-.pay-btn{
-    background:#1da851;
-    padding:14px;
-    width:100%;
-    border:none;
-    color:white;
-    border-radius:8px;
-    font-size:18px;
-    margin-top:10px;
-    cursor:pointer;
-}
-</style>
-
 </head>
 
 <body>
 
-<div class="main-box">
+<div class="container" style="text-align:center;max-width:420px;margin:auto;margin-top:40px;">
 
-    <div class="logo">📒💸</div>
+    <div style="font-size:60px;background:#ddd;width:150px;height:150px;border-radius:50%;margin:auto;display:flex;align-items:center;justify-content:center;">
+        📒💸
+    </div>
 
-    <input id="phone" placeholder="رقم الهاتف">
-    <input id="pass" type="password" placeholder="كلمة المرور">
+    <h2>تسجيل الدخول</h2>
 
-    <button class="main-btn" onclick="login()">تسجيل الدخول</button>
-    <button class="main-btn secondary" onclick="showRegister()">تسجيل مستخدم جديد</button>
+    <input id="phone" placeholder="رقم الهاتف" class="in">
+    <input id="pass" type="password" placeholder="كلمة المرور" class="in">
+
+    <button onclick="login()" class="btn-green">دخول</button>
 
     <p id="msg" style="color:red;margin-top:10px;"></p>
-
-    <!-- صندوق التسجيل -->
-    <div id="registerBox" style="display:none;">
-        <h3 style="margin-top:20px;">تسجيل مستخدم جديد</h3>
-
-        <input id="rphone" placeholder="رقم الهاتف الجديد">
-        <input id="rpass" placeholder="كلمة المرور الجديدة">
-
-        <button class="main-btn" style="background:#444;" onclick="createUser()">إنشاء حساب</button>
-        <p id="rmsg" style="color:red;"></p>
-    </div>
-
-    <!-- رسالة الحظر -->
-    <div id="banBox" style="display:none;" class="pay-box">
-        <b>تم حظر الحساب</b><br>
-        عليك تسديد الاشتراك  
-        <span style="color:red;font-weight:bold;">5000 دينار</span><br>
-        إلى زين كاش:  
-        <b>07816175944</b><br>
-        أو التواصل واتساب
-        <button class="pay-btn" onclick="openWhatsApp()">اتصل واتساب 07816175944</button>
-    </div>
-
 </div>
 
 <!-- Firebase -->
@@ -114,7 +30,6 @@ body{
 <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
 
 <script>
-// إعداد فيربيز
 const firebaseConfig = {
   apiKey: "AIzaSyA_3TFx5dUR3JbcXj5jFIZ_mpjWeco7FVo",
   authDomain: "tktkbaghdad.firebaseapp.com",
@@ -127,98 +42,56 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
-</script>
 
-<script>
-// تسجيل الدخول
+// إنشاء حساب مدير افتراضي مرة واحدة فقط
+db.ref("users/07700000000").once("value", s => {
+    if(!s.exists()){
+        db.ref("users/07700000000").set({
+            phone:"07700000000",
+            pass:"1234",
+            role:"admin",
+            ban:false,
+            expire:0
+        });
+    }
+});
+
 function login(){
-    msg.innerText = "";
-    banBox.style.display = "none";
-
     let p = phone.value.trim();
     let pw = pass.value.trim();
 
     db.ref("users/" + p).once("value", snap => {
         if(!snap.exists()){
-            msg.innerText = "مستخدم غير موجود";
+            msg.innerText = "المستخدم غير موجود";
             return;
         }
 
-        let user = snap.val();
+        let u = snap.val();
 
-        if(user.pass !== pw){
-            msg.innerText = "كلمة المرور غير صحيحة";
+        if(u.pass !== pw){
+            msg.innerText = "كلمة المرور خطأ";
             return;
         }
 
-        if(user.ban === true){
-            banBox.style.display = "block";
+        if(u.ban){
+            msg.innerText = "الحساب محظور – راجع الإدارة";
             return;
         }
 
-        if(user.expire && Date.now() > user.expire){
+        if(u.expire && Date.now() > u.expire){
             msg.innerText = "انتهت صلاحية الحساب";
             return;
         }
 
-        // نجاح
-        localStorage.setItem("loginUser", JSON.stringify(user));
+        localStorage.setItem("loginUser", JSON.stringify(u));
         localStorage.setItem("loginPhone", p);
 
-        if(user.role === "admin"){
-            window.location = "admin.html";
+        if(u.role === "admin"){
+            window.location.href = "admin.html";
         } else {
-            window.location = "home.html";
+            window.location.href = "home.html";
         }
     });
-}
-
-// فتح التسجيل
-function showRegister(){
-    registerBox.style.display = "block";
-}
-
-// تسجيل مستخدم جديد
-function createUser(){
-    let p = rphone.value.trim();
-    let pw = rpass.value.trim();
-
-    if(p=="" || pw==""){
-        rmsg.innerText = "أكمل الحقول";
-        return;
-    }
-
-    db.ref("users/" + p).once("value", snap => {
-        if(snap.exists()){
-            rmsg.innerText = "رقم الهاتف مستخدم مسبقاً";
-            return;
-        }
-
-        let newUser = {
-            phone:p,
-            pass:pw,
-            role:"user",
-            ban:false,
-            expire:0
-        };
-
-        db.ref("users/" + p).set(newUser);
-
-        rmsg.style.color = "green";
-        rmsg.innerText = "تم التسجيل بنجاح";
-
-        setTimeout(()=>{
-            registerBox.style.display = "none";
-            rphone.value = "";
-            rpass.value = "";
-            rmsg.innerText = "";
-        }, 1000);
-    });
-}
-
-// واتساب
-function openWhatsApp(){
-    window.location.href = "https://wa.me/9647816175944";
 }
 </script>
 
