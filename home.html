@@ -9,9 +9,23 @@
 <body>
 
 <div class="container">
+
+<h2>إضافة دين جديد</h2>
+
+<input id="dName" placeholder="الاسم">
+<select id="dType">
+    <option value="مدين">مدين</option>
+    <option value="مدان">مدان</option>
+</select>
+<input id="dAmount" type="number" placeholder="المبلغ">
+
+<button onclick="addDebt()">إضافة الدين</button>
+
+<hr style="margin:20px 0;">
+
 <h2>البحث عن مدين / مدان</h2>
 
-<input id="searchName" placeholder="ابحث باسم الشخص" oninput="render()">
+<input id="searchName" placeholder="ابحث بالاسم" oninput="render()">
 
 <div id="resultsBox" style="margin-top:20px;"></div>
 
@@ -28,23 +42,50 @@ if(!loginUser) window.location.href="index.html";
 // رقم المستخدم
 let userPhone = loginUser.phone;
 
-// جميع الديون
+// جميع الديون من التخزين
 let allDebts = JSON.parse(localStorage.getItem("debts") || "{}");
 
-// أول دخول – إنشاء قائمة فارغة
+// اول دخول
 if(!allDebts[userPhone]) allDebts[userPhone] = [];
 
-// حفظ البيانات
+// حفظ
 function save(){
     localStorage.setItem("debts", JSON.stringify(allDebts));
 }
 
-// عرض النتائج حسب البحث
+// إضافة دين جديد
+function addDebt(){
+    let name = dName.value.trim();
+    let type = dType.value;
+    let amount = dAmount.value.trim();
+
+    if(name === "" || amount === ""){
+        alert("أكمل الحقول");
+        return;
+    }
+
+    allDebts[userPhone].push({
+        name: name,
+        type: type,
+        amount: Number(amount),
+        date: new Date().toLocaleDateString()
+    });
+
+    save();
+    clearInputs();
+    render();
+}
+
+function clearInputs(){
+    dName.value = "";
+    dAmount.value = "";
+}
+
+// عرض بحسب البحث
 function render(){
     let name = searchName.value.trim();
 
-    // البحث عن الاسم
-    let list = allDebts[userPhone].filter(d => 
+    let list = allDebts[userPhone].filter(d =>
         d.name.includes(name)
     );
 
@@ -71,7 +112,7 @@ function render(){
     total.innerText = sum;
 }
 
-// الحصول على رقم العنصر داخل المصفوفة
+// الحصول على اندكس حقيقي
 function getIndex(obj){
     return allDebts[userPhone].indexOf(obj);
 }
@@ -80,7 +121,6 @@ function getIndex(obj){
 function addMore(i){
     let d = allDebts[userPhone][i];
     let more = prompt("المبلغ المضاف:");
-
     if(more && !isNaN(more)){
         d.amount = Number(d.amount) + Number(more);
         save();
@@ -88,7 +128,7 @@ function addMore(i){
     }
 }
 
-// تسديد جزء من المبلغ
+// تسديد جزئي
 function pay(i){
     let d = allDebts[userPhone][i];
     let amt = prompt("أدخل مبلغ التسديد:");
@@ -100,10 +140,10 @@ function pay(i){
     if(amt <= 0) return;
 
     if(amt >= d.amount){
-        // تم تسديد الدين كامل → حذف
+        // تم السداد كامل
         allDebts[userPhone].splice(i,1);
     } else {
-        // تسديد جزئي
+        // سداد جزئي
         d.amount = d.amount - amt;
     }
 
@@ -116,7 +156,6 @@ function logout(){
     window.location.href="index.html";
 }
 
-// تشغيل أولي
 render();
 </script>
 
