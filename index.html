@@ -26,9 +26,9 @@
 <script>
 let users = JSON.parse(localStorage.getItem("users") || "[]");
 
-// إنشاء حساب المدير لو أول مرة
+// إنشاء حساب مدير افتراضي
 if(users.length === 0){
-    users.push({ phone:"07700000000", pass:"1234", role:"admin" });
+    users.push({ phone:"07700000000", pass:"1234", role:"admin", ban:false, expire:0 });
     localStorage.setItem("users", JSON.stringify(users));
 }
 
@@ -41,6 +41,19 @@ function login(){
     if(!user){
         msg.innerText = "بيانات خاطئة";
         return;
+    }
+
+    if(user.ban){
+        msg.innerText = "هذا المستخدم محظور";
+        return;
+    }
+
+    // فحص انتهاء صلاحية التفعيل
+    if(user.role === "user" && user.expire !== 0){
+        if(Date.now() > user.expire){
+            msg.innerText = "انتهت صلاحية الحساب. يرجى التواصل مع الإدارة";
+            return;
+        }
     }
 
     localStorage.setItem("loginUser", JSON.stringify(user));
