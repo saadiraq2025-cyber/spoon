@@ -2,8 +2,45 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title>دفتر الديون</title>
 <link rel="stylesheet" href="style.css">
+
+<style>
+/* جعل عرض الحقول 6 سم */
+input, select {
+    width: 6cm !important;
+    max-width: 100%;
+    padding: 10px;
+    font-size: 17px;
+    margin-top: 8px;
+    border-radius: 8px;
+    border: 2px solid #aaa;
+}
+
+/* لون أحمر إذا كان الحقل فارغ */
+input:invalid, select:invalid {
+    border-color: red;
+    background: #ffe5e5;
+}
+
+.container {
+    max-width: 95%;
+    margin: auto;
+}
+
+button{
+    width: 6cm;
+    max-width: 100%;
+    padding: 12px;
+    margin-top: 10px;
+    border: none;
+    border-radius: 8px;
+    font-size: 18px;
+    background:#2e7d32;
+    color:white;
+}
+</style>
 </head>
 
 <body>
@@ -12,13 +49,14 @@
 
 <h2>إضافة دين جديد</h2>
 
-<input id="dName" placeholder="الاسم">
-<input id="dItem" placeholder="المادة">   <!-- الحقل الجديد -->
-<select id="dType">
+<input id="dName" placeholder="الاسم" required>
+<input id="dItem" placeholder="المادة" required>
+<select id="dType" required>
     <option value="مدين">مدين</option>
     <option value="مدان">مدان</option>
 </select>
-<input id="dAmount" type="number" placeholder="المبلغ">
+<input id="dAmount" type="number" placeholder="المبلغ" required>
+<input id="dNote" placeholder="ملاحظات (اختياري)">
 
 <button onclick="addDebt()">إضافة الدين</button>
 
@@ -65,20 +103,22 @@ let debtsRef = db.ref("debts/" + userPhone);
 // إضافة دين جديد
 function addDebt(){
     let name = dName.value.trim();
-    let item = dItem.value.trim();  // المادة
+    let item = dItem.value.trim();
     let type = dType.value;
     let amount = dAmount.value.trim();
+    let note = dNote.value.trim();
 
     if(name === "" || item === "" || amount === ""){
-        alert("أكمل الحقول");
+        alert("الرجاء ملء الحقول المطلوبة");
         return;
     }
 
     let debt = {
         name: name,
-        item: item,       // تخزين المادة
+        item: item,
         type: type,
         amount: Number(amount),
+        note: note,
         date: new Date().toLocaleDateString()
     };
 
@@ -87,6 +127,7 @@ function addDebt(){
     dName.value = "";
     dItem.value = "";
     dAmount.value = "";
+    dNote.value = "";
     render();
 }
 
@@ -112,7 +153,8 @@ function render(){
                 <b>المادة:</b> ${d.item}<br>
                 <b>النوع:</b> ${d.type}<br>
                 <b>المبلغ المتبقي:</b> ${d.amount}<br>
-                <b>التاريخ:</b> ${d.date}<br><br>
+                <b>التاريخ:</b> ${d.date}<br>
+                <b>ملاحظات:</b> ${d.note ? d.note : "لا يوجد"}<br><br>
 
                 <button onclick="pay('${key}')" style="background:red;">تسديد مبلغ</button>
                 <button onclick="addMore('${key}')" style="background:orange;">إضافة مبلغ</button>
