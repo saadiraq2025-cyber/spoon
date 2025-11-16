@@ -13,11 +13,13 @@
 
 <h3>إضافة مستخدم جديد</h3>
 
-<input id="nPhone" placeholder="رقم هاتف المستخدم">
+<input id="nPhone" placeholder="رقم الهاتف">
 <input id="nPass" placeholder="كلمة المرور">
+
 <button onclick="addUser()">إضافة المستخدم</button>
 
 <h3>جميع المستخدمين</h3>
+
 <table>
 <thead>
 <tr>
@@ -34,82 +36,116 @@
 
 </div>
 
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+
 <script>
+// إعداد فيربيز
+const firebaseConfig = {
+  apiKey: "AIzaSyA_3TFx5dUR3JbcXj5jFIZ_mpjWeco7FVo",
+  authDomain: "tktkbaghdad.firebaseapp.com",
+  databaseURL: "https://tktkbaghdad-default-rtdb.firebaseio.com",
+  projectId: "tktkbaghdad",
+  storageBucket: "tktkbaghdad.firebasestorage.app",
+  messagingSenderId: "939931176033",
+  appId: "1:939931176033:web:1d44fa5fd01ee75b326e20"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+</script>
+
+<script>
+// تأكد المدير
 let admin = JSON.parse(localStorage.getItem("loginUser"));
-if(!admin || admin.role!=="admin") window.location.href="index.html";
+if(!admin || admin.role !== "admin") window.location.href = "index.html";
 
-let users = JSON.parse(localStorage.getItem("users"));
+let usersRef = db.ref("users");
 
+// إضافة مستخدم
 function addUser(){
     let p = nPhone.value.trim();
     let pw = nPass.value.trim();
+    if(p=="" || pw==""){ alert("أكمل الحقول"); return; }
 
-    if(p=="" || pw=="") return;
+    usersRef.child(p).set({
+        phone:p,
+        pass:pw,
+        role:"user",
+        ban:false,
+        expire:0
+    });
 
-    users.push({phone:p, pass:pw, role:"user", ban:false, expire:0});
-    localStorage.setItem("users", JSON.stringify(users));
-
-    nPhone.value = "";
-    nPass.value = "";
-
-    render();
+    nPhone.value="";
+    nPass.value="";
+    loadUsers();
 }
 
-function toggleBan(i){
-    users[i].ban = !users[i].ban;
-    localStorage.setItem("users", JSON.stringify(users));
-    render();
+// تحميل المستخدمين
+function loadUsers(){
+    usersRef.once("value", snap => {
+        uList.innerHTML = "";
+
+        snap.forEach(child => {
+            let u = child.val();
+            let exp = u.expire == 0 ? "دائم" : new Date(u.expire).toLocaleString();
+            let phone = u.phone;
+
+            uList.innerHTML += `
+            <tr>
+                <td>${u.phone}</td>
+                <td>${u.ban ? "محظور" : "نشط"}</td>
+                <td>${exp}</td>
+                <td>
+                    <button onclick="openDebts('${phone}')">فتح الديون</button>
+                    <button onclick="toggleBan('${phone}', ${u.ban})" style="background:orange;">${u.ban?"إلغاء حظر":"حظر"}</button>
+                    <button onclick="activate('${phone}')" style="background:#444;">تفعيل</button>
+                    <button onclick="deleteUser('${phone}')" style="background:red;">حذف</button>
+                </td>
+            </tr>
+            `;
+        });
+    });
 }
 
-function activate(i){
-    let days = prompt("عدد الأيام أو الدقائق:");
-    if(!days) return;
-
-    let ms = Number(days) * 24 * 60 * 60 * 1000;
-    users[i].expire = Date.now() + ms;
-
-    localStorage.setItem("users", JSON.stringify(users));
-    render();
-}
-
-function delUser(i){
-    users.splice(i,1);
-    localStorage.setItem("users", JSON.stringify(users));
-    render();
-}
-
-function editUser(i){
-    localStorage.setItem("editUserPhone", users[i].phone);
+// فتح دفتر الديون
+function openDebts(phone){
+    localStorage.setItem("loginPhone", phone);
     window.location.href = "home.html";
 }
 
-function render(){
-    uList.innerHTML = "";
-    users.forEach((u,i)=>{
-        let exp = u.expire===0 ? "دائم" : new Date(u.expire).toLocaleString();
+// حظر / إلغاء حظر
+function toggleBan(phone, status){
+    usersRef.child(phone).update({ban: !status});
+    loadUsers();
+}
 
-        uList.innerHTML += `
-        <tr>
-            <td>${u.phone}</td>
-            <td>${u.ban ? "محظور" : "نشط"}</td>
-            <td>${exp}</td>
-            <td>
-                <button onclick="editUser(${i})">فتح</button>
-                <button onclick="toggleBan(${i})" style="background:orange;">${u.ban?"إلغاء حظر":"حظر"}</button>
-                <button onclick="activate(${i})" style="background:#444;">تفعيل</button>
-                <button onclick="delUser(${i})" style="background:red;">حذف</button>
-            </td>
-        </tr>
-        `;
-    });
+// تفعيل المستخدم
+function activate(phone){
+    let days = prompt("عدد الأيام:");
+    if(!days || isNaN(days)) return;
+
+    let ms = Number(days) * 24 * 60 * 60 * 1000;
+    usersRef.child(phone).update({expire: Date.now() + ms});
+    loadUsers();
+}
+
+// حذف مستخدم
+function deleteUser(phone){
+    if(confirm("هل تريد حذف المستخدم؟")){
+        usersRef.child(phone).remove();
+        db.ref("debts/" + phone).remove();
+        loadUsers();
+    }
 }
 
 function logout(){
     localStorage.removeItem("loginUser");
-    window.location.href="index.html";
+    window.location.href = "index.html";
 }
 
-render();
+loadUsers();
 </script>
 
 </body>
