@@ -78,11 +78,12 @@ button{
 
 <input id="dName" placeholder="الاسم" required>
 <input id="dItem" placeholder="المادة" required>
+<input id="dQty" type="number" placeholder="العدد" required>
 <select id="dType" required>
     <option value="مدين">مدين</option>
     <option value="مدان">مدان</option>
 </select>
-<input id="dAmount" type="number" placeholder="المبلغ" required>
+<input id="dAmount" type="number" placeholder="سعر الوحدة" required>
 <input id="dNote" placeholder="ملاحظات (اختياري)">
 
 <button onclick="addDebt()">إضافة الدين</button>
@@ -97,7 +98,7 @@ button{
 
 <div id="resultsBox" style="margin-top:20px;"></div>
 
-<div class="totalBox">المجموع الكلي: <span id="total">0</span> دينار</div>
+<div class="totalBox">المجموع الكلي: <span id="total">0</span> دينار عراقي</div>
 
 <button onclick="logout()" style="background:red;margin-top:15px;">خروج</button>
 
@@ -144,20 +145,25 @@ let debtsRef = db.ref("debts/" + userPhone);
 function addDebt(){
     let name = dName.value.trim();
     let item = dItem.value.trim();
+    let qty  = dQty.value.trim();
     let type = dType.value;
     let amount = dAmount.value.trim();
     let note = dNote.value.trim();
 
-    if(name === "" || item === "" || amount === ""){
-        alert("الرجاء ملء الحقول المطلوبة");
+    if(name === "" || item === "" || amount === "" || qty === ""){
+        alert("الرجاء ملء جميع الحقول");
         return;
     }
+
+    let total = Number(qty) * Number(amount);
 
     let debt = {
         name: name,
         item: item,
+        qty: Number(qty),
         type: type,
-        amount: Number(amount),
+        unit: Number(amount),
+        amount: total,
         note: note,
         date: new Date().toLocaleDateString()
     };
@@ -166,6 +172,7 @@ function addDebt(){
 
     dName.value = "";
     dItem.value = "";
+    dQty.value = "";
     dAmount.value = "";
     dNote.value = "";
     render();
@@ -191,8 +198,10 @@ function render(){
             <div style="padding:10px;border:1px solid #aaa;border-radius:8px;margin-bottom:10px;background:#fff;">
                 <b>الاسم:</b> ${d.name}<br>
                 <b>المادة:</b> ${d.item}<br>
+                <b>العدد:</b> ${d.qty}<br>
+                <b>سعر الوحدة:</b> ${d.unit} دينار<br>
+                <b>المبلغ:</b> ${d.amount} دينار عراقي<br>
                 <b>النوع:</b> ${d.type}<br>
-                <b>المبلغ المتبقي:</b> ${d.amount}<br>
                 <b>التاريخ:</b> ${d.date}<br>
                 <b>ملاحظات:</b> ${d.note ? d.note : "لا يوجد"}<br><br>
 
@@ -209,7 +218,7 @@ function render(){
 
 // إضافة مبلغ
 function addMore(key){
-    let more = prompt("المبلغ المضاف:");
+    let more = prompt("المبلغ المضاف (دينار):");
     if(!more || isNaN(more)) return;
 
     debtsRef.child(key).once("value", snap => {
@@ -222,7 +231,7 @@ function addMore(key){
 
 // تسديد جزئي
 function pay(key){
-    let amt = prompt("أدخل مبلغ التسديد:");
+    let amt = prompt("أدخل مبلغ التسديد (دينار):");
     if(!amt || isNaN(amt)) return;
 
     amt = Number(amt);
@@ -247,8 +256,10 @@ function openReport(){
         <tr>
             <th>الاسم</th>
             <th>المادة</th>
+            <th>العدد</th>
+            <th>سعر الوحدة</th>
+            <th>المجموع</th>
             <th>النوع</th>
-            <th>المبلغ</th>
             <th>التاريخ</th>
             <th>ملاحظات</th>
         </tr>`;
@@ -263,15 +274,17 @@ function openReport(){
             <tr>
                 <td>${d.name}</td>
                 <td>${d.item}</td>
+                <td>${d.qty}</td>
+                <td>${d.unit} دينار</td>
+                <td>${d.amount} دينار</td>
                 <td>${d.type}</td>
-                <td>${d.amount}</td>
                 <td>${d.date}</td>
                 <td>${d.note||"لا يوجد"}</td>
             </tr>`;
         });
 
         html += `</table>
-        <h3 style="margin-top:15px;">المجموع الكلي: ${total} دينار</h3>`;
+        <h3 style="margin-top:15px;">المجموع الكلي: ${total} دينار عراقي</h3>`;
 
         reportData.innerHTML = html;
         reportBox.style.display = "flex";
