@@ -40,6 +40,33 @@ button{
     background:#2e7d32;
     color:white;
 }
+
+/* صندوق التقرير */
+#reportBox{
+    display:none;
+    position:fixed;
+    top:0;left:0;
+    width:100%;height:100%;
+    background:rgba(0,0,0,0.6);
+    justify-content:center;
+    align-items:center;
+    z-index:999;
+}
+#reportContent{
+    background:white;
+    width:95%;
+    max-width:700px;
+    padding:20px;
+    border-radius:10px;
+    max-height:90vh;
+    overflow:auto;
+}
+#printBtn{
+    background:#0077cc;
+}
+#closeReport{
+    background:red;
+}
 </style>
 </head>
 
@@ -66,12 +93,25 @@ button{
 
 <input id="searchName" placeholder="ابحث بالاسم" oninput="render()">
 
+<button style="background:#0077cc" onclick="openReport()">📄 تقرير شامل</button>
+
 <div id="resultsBox" style="margin-top:20px;"></div>
 
 <div class="totalBox">المجموع الكلي: <span id="total">0</span> دينار</div>
 
 <button onclick="logout()" style="background:red;margin-top:15px;">خروج</button>
 
+</div>
+
+<!-- نافذة التقرير -->
+<div id="reportBox">
+    <div id="reportContent">
+        <h3 style="text-align:center;">📄 تقرير شامل للمستخدم</h3>
+        <div id="reportData"></div>
+
+        <button id="printBtn" onclick="window.print()">🖨 طباعة التقرير</button>
+        <button id="closeReport" onclick="closeReport()">إغلاق</button>
+    </div>
 </div>
 
 <!-- Firebase -->
@@ -198,6 +238,48 @@ function pay(key){
 
         render();
     });
+}
+
+// فتح التقرير
+function openReport(){
+    debtsRef.once("value", snap => {
+        let html = `<table border="1" style="width:100%; border-collapse:collapse;">
+        <tr>
+            <th>الاسم</th>
+            <th>المادة</th>
+            <th>النوع</th>
+            <th>المبلغ</th>
+            <th>التاريخ</th>
+            <th>ملاحظات</th>
+        </tr>`;
+
+        let total = 0;
+
+        snap.forEach(ch=>{
+            let d = ch.val();
+            total += d.amount;
+
+            html += `
+            <tr>
+                <td>${d.name}</td>
+                <td>${d.item}</td>
+                <td>${d.type}</td>
+                <td>${d.amount}</td>
+                <td>${d.date}</td>
+                <td>${d.note||"لا يوجد"}</td>
+            </tr>`;
+        });
+
+        html += `</table>
+        <h3 style="margin-top:15px;">المجموع الكلي: ${total} دينار</h3>`;
+
+        reportData.innerHTML = html;
+        reportBox.style.display = "flex";
+    });
+}
+
+function closeReport(){
+    reportBox.style.display = "none";
 }
 
 function logout(){
