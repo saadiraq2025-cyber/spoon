@@ -8,7 +8,7 @@
 
 <style>
 /* جعل عرض الحقول 6 سم */
-input, select {
+input {
     width: 6cm !important;
     max-width: 100%;
     padding: 10px;
@@ -19,7 +19,7 @@ input, select {
 }
 
 /* لون أحمر إذا كان الحقل فارغ */
-input:invalid, select:invalid {
+input:invalid {
     border-color: red;
     background: #ffe5e5;
 }
@@ -79,10 +79,6 @@ button{
 <input id="dName" placeholder="الاسم" required>
 <input id="dItem" placeholder="المادة" required>
 <input id="dQty" type="number" placeholder="العدد" required>
-<select id="dType" required>
-    <option value="مدين">مدين</option>
-    <option value="مدان">مدان</option>
-</select>
 <input id="dAmount" type="number" placeholder="سعر الوحدة" required>
 <input id="dNote" placeholder="ملاحظات (اختياري)">
 
@@ -90,7 +86,7 @@ button{
 
 <hr style="margin:20px 0;">
 
-<h2>البحث عن مدين / مدان</h2>
+<h2>البحث عن مدين</h2>
 
 <input id="searchName" placeholder="ابحث بالاسم" oninput="render()">
 
@@ -146,7 +142,6 @@ function addDebt(){
     let name = dName.value.trim();
     let item = dItem.value.trim();
     let qty  = dQty.value.trim();
-    let type = dType.value;
     let amount = dAmount.value.trim();
     let note = dNote.value.trim();
 
@@ -161,7 +156,6 @@ function addDebt(){
         name: name,
         item: item,
         qty: Number(qty),
-        type: type,
         unit: Number(amount),
         amount: total,
         note: note,
@@ -183,15 +177,21 @@ function render(){
     let search = searchName.value.trim();
 
     debtsRef.once("value", snap => {
-        let html = "";
+        let list = [];
         let sum = 0;
 
         snap.forEach(child => {
             let d = child.val();
-            let key = child.key;
+            d.key = child.key;
+            if(d.name.includes(search)) list.push(d);
+        });
 
-            if(!d.name.includes(search)) return;
+        // ترتيب حسب أعلى مبلغ
+        list.sort((a,b)=> b.amount - a.amount);
 
+        let html = "";
+
+        list.forEach(d=>{
             sum += d.amount;
 
             html += `
@@ -201,12 +201,11 @@ function render(){
                 <b>العدد:</b> ${d.qty}<br>
                 <b>سعر الوحدة:</b> ${d.unit} دينار<br>
                 <b>المبلغ:</b> ${d.amount} دينار عراقي<br>
-                <b>النوع:</b> ${d.type}<br>
                 <b>التاريخ:</b> ${d.date}<br>
                 <b>ملاحظات:</b> ${d.note ? d.note : "لا يوجد"}<br><br>
 
-                <button onclick="pay('${key}')" style="background:red;">تسديد مبلغ</button>
-                <button onclick="addMore('${key}')" style="background:orange;">إضافة مبلغ</button>
+                <button onclick="pay('${d.key}')" style="background:red;">تسديد مبلغ</button>
+                <button onclick="addMore('${d.key}')" style="background:orange;">إضافة مبلغ</button>
             </div>
             `;
         });
@@ -252,22 +251,31 @@ function pay(key){
 // فتح التقرير
 function openReport(){
     debtsRef.once("value", snap => {
-        let html = `<table border="1" style="width:100%; border-collapse:collapse;">
+
+        let list = [];
+        let total = 0;
+
+        snap.forEach(ch=>{
+            let d = ch.val();
+            list.push(d);
+        });
+
+        // ترتيب حسب أعلى مبلغ
+        list.sort((a,b)=> b.amount - a.amount);
+
+        let html = `
+        <table border="1" style="width:100%; border-collapse:collapse;">
         <tr>
             <th>الاسم</th>
             <th>المادة</th>
             <th>العدد</th>
             <th>سعر الوحدة</th>
             <th>المجموع</th>
-            <th>النوع</th>
             <th>التاريخ</th>
             <th>ملاحظات</th>
         </tr>`;
 
-        let total = 0;
-
-        snap.forEach(ch=>{
-            let d = ch.val();
+        list.forEach(d=>{
             total += d.amount;
 
             html += `
@@ -277,7 +285,6 @@ function openReport(){
                 <td>${d.qty}</td>
                 <td>${d.unit} دينار</td>
                 <td>${d.amount} دينار</td>
-                <td>${d.type}</td>
                 <td>${d.date}</td>
                 <td>${d.note||"لا يوجد"}</td>
             </tr>`;
