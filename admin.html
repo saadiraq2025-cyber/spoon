@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>لوحة المدير</title>
+<title>لوحة المدير - نظام تكتك</title>
 <link rel="stylesheet" href="style.css">
 
 <style>
@@ -34,6 +34,7 @@
     font-size:17px;
     border-radius:8px;
     border:1px solid #aaa;
+    box-sizing: border-box;
 }
 
 .btn {
@@ -50,6 +51,16 @@
 .btn-green { background:#2e7d32; color:white; }
 .btn-red { background:red; color:white; }
 .btn-orange { background:orange; color:white; }
+.btn-dark { background:#444; color:white; }
+
+.stats-bar {
+    background: #f4f4f4;
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    font-weight: bold;
+    border-right: 5px solid #0077cc;
+}
 
 table{
     width:100%;
@@ -61,6 +72,11 @@ td, th{
     padding:8px;
     text-align:center;
 }
+
+/* شريط البحث */
+.search-box {
+    margin-bottom: 15px;
+}
 </style>
 
 </head>
@@ -71,14 +87,22 @@ td, th{
 
 <h2>لوحة التحكم</h2>
 
-<h3>إضافة مستخدم جديد</h3>
+<div class="stats-bar" id="stats">
+    إجمالي المستخدمين: <span id="userCount">0</span>
+</div>
 
+<h3>إضافة مستخدم جديد</h3>
 <input id="nPhone" placeholder="رقم الهاتف" class="inp">
 <input id="nPass" placeholder="كلمة المرور" class="inp">
-
 <button onclick="addUser()" class="btn btn-green">إضافة المستخدم</button>
 
-<h3>جميع المستخدمين</h3>
+<hr style="margin:20px 0;">
+
+<h3>إدارة المستخدمين</h3>
+
+<div class="search-box">
+    <input type="text" id="searchInput" onkeyup="filterUsers()" placeholder="بحث برقم الهاتف..." class="inp">
+</div>
 
 <table>
 <thead>
@@ -96,25 +120,21 @@ td, th{
 
 </div>
 
-<!-- نافذة تعديل المستخدم -->
 <div id="editBox">
     <div id="editContent">
         <h3>تعديل المستخدم</h3>
-
         <input id="editPhone" class="inp" placeholder="رقم الهاتف الجديد">
         <input id="editPass" class="inp" placeholder="كلمة المرور الجديدة">
-
         <button onclick="saveEdit()" class="btn btn-green">حفظ التعديل</button>
         <button onclick="closeEdit()" class="btn btn-red">إغلاق</button>
     </div>
 </div>
 
-<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
 
 <script>
-// فيربيز
+// إعدادات فيربيز الأصلية
 firebase.initializeApp({
   apiKey: "AIzaSyA_3TFx5dUR3JbcXj5jFIZ_mpjWeco7FVo",
   authDomain: "tktkbaghdad.firebaseapp.com",
@@ -128,35 +148,96 @@ firebase.initializeApp({
 const db = firebase.database();
 const usersRef = db.ref("users");
 
-// المستخدم الحالي مدير
+// التحقق من صلاحية المدير
 let admin = JSON.parse(localStorage.getItem("loginUser"));
 if(!admin || admin.role !== "admin") window.location = "index.html";
 
-// تحميل المستخدمين
+// وظيفة إضافة مستخدم جديد
+function addUser(){
+    let p = document.getElementById("nPhone").value.trim();
+    let s = document.getElementById("nPass").value.trim();
+    if(p=="" || s=="") { alert("املأ الحقول"); return; }
+
+    usersRef.child(p).set({
+        phone: p,
+        pass: s,
+        role: "user",
+        ban: false,
+        expire: 0
+    }, ()=> {
+        alert("تمت الإضافة");
+        document.getElementById("nPhone").value="";
+        document.getElementById("nPass").value="";
+        loadUsers();
+    });
+}
+
+// تحميل وفحص المستخدمين
 function loadUsers(){
     usersRef.once("value", snap=>{
         uList.innerHTML = "";
+        let count = 0;
+        let now = Date.now();
 
         snap.forEach(ch=>{
             let u = ch.val();
             let ph = u.phone;
-            let exp = u.expire && u.expire !=0 ? new Date(u.expire).toLocaleString() : "دائم";
+            count++;
+
+            // نظام الحظر التلقائي عند انتهاء المدة
+            if(u.expire != 0 && u.expire < now && !u.ban){
+                usersRef.child(ph).update({ban: true});
+                u.ban = true; // تحديث الواجهة فورياً
+            }
+
+            let exp = u.expire && u.expire != 0 ? new Date(u.expire).toLocaleDateString() : "دائم/غير مفعل";
+            let statusText = u.ban ? "<span style='color:red'>محظور</span>" : "<span style='color:green'>نشط</span>";
 
             uList.innerHTML += `
-            <tr>
-                <td>${ph}</td>
-                <td>${u.ban?"محظور":"نشط"}</td>
+            <tr class="user-row">
+                <td class="user-phone">${ph}</td>
+                <td>${statusText}</td>
                 <td>${exp}</td>
                 <td>
-                    <button onclick="openDebts('${ph}')" class="btn btn-blue">فتح</button>
-                    <button onclick="openEdit('${ph}')" class="btn btn-orange">تعديل</button>
-                    <button onclick="toggleBan('${ph}', ${u.ban})" class="btn btn-orange">${u.ban?"إلغاء حظر":"حظر"}</button>
-                    <button onclick="activate('${ph}')" class="btn btn-dark" style="background:#444;color:white;">تفعيل</button>
-                    <button onclick="deleteUser('${ph}')" class="btn btn-red">حذف</button>
+                    <button onclick="openDebts('${ph}')" class="btn-blue" style="padding:5px; border-radius:5px; border:none; cursor:pointer;">فتح</button>
+                    <button onclick="openEdit('${ph}')" class="btn-orange" style="padding:5px; border-radius:5px; border:none; cursor:pointer;">تعديل</button>
+                    <button onclick="toggleBan('${ph}', ${u.ban})" class="btn-orange" style="padding:5px; border-radius:5px; border:none; cursor:pointer;">${u.ban?"إلغاء حظر":"حظر"}</button>
+                    <button onclick="activateMonth('${ph}')" class="btn-dark" style="padding:5px; border-radius:5px; border:none; cursor:pointer;">تفعيل شهر</button>
+                    <button onclick="deleteUser('${ph}')" class="btn-red" style="padding:5px; border-radius:5px; border:none; cursor:pointer;">حذف</button>
                 </td>
             </tr>
             `;
         });
+        document.getElementById("userCount").innerText = count;
+    });
+}
+
+// وظيفة البحث (فلترة الجدول)
+function filterUsers() {
+    let input = document.getElementById("searchInput").value.toLowerCase();
+    let rows = document.getElementsByClassName("user-row");
+
+    for (let row of rows) {
+        let phoneText = row.querySelector(".user-phone").innerText;
+        if (phoneText.toLowerCase().includes(input)) {
+            row.style.display = "";
+        } else {
+            row.style.display = "none";
+        }
+    }
+}
+
+// تفعيل لمدة شهر (30 يوم)
+function activateMonth(phone){
+    if(!confirm("تفعيل الاشتراك لمدة 30 يوم؟ سيتم إلغاء الحظر تلقائياً.")) return;
+    
+    let thirtyDays = 30 * 24 * 60 * 60 * 1000;
+    usersRef.child(phone).update({
+        expire: Date.now() + thirtyDays,
+        ban: false
+    }, ()=> {
+        alert("تم التفعيل لمدة شهر");
+        loadUsers();
     });
 }
 
@@ -166,102 +247,61 @@ function openDebts(phone){
     window.location = "home.html";
 }
 
-// فتح نافذة التعديل
+// نافذة التعديل
 let oldPhone="";
 function openEdit(phone){
     oldPhone = phone;
-
     db.ref("users/"+phone).once("value", snap=>{
         let u = snap.val() || {};
-
-        editPhone.value = u.phone || phone;
-        editPass.value  = u.pass  || "";
-
-        editBox.style.display = "flex";
+        document.getElementById("editPhone").value = u.phone || phone;
+        document.getElementById("editPass").value  = u.pass  || "";
+        document.getElementById("editBox").style.display = "flex";
     });
 }
 
 function closeEdit(){
-    editBox.style.display = "none";
+    document.getElementById("editBox").style.display = "none";
 }
 
-// حفظ التعديلات
 function saveEdit(){
-    let newPhone = editPhone.value.trim();
-    let newPass  = editPass.value.trim();
+    let newPhone = document.getElementById("editPhone").value.trim();
+    let newPass  = document.getElementById("editPass").value.trim();
 
-    if(newPhone===""){ alert("ضع رقم الهاتف"); return; }
-    if(newPass ===""){ alert("ضع كلمة المرور"); return; }
+    if(newPhone==="" || newPass === ""){ alert("اكمل البيانات"); return; }
 
-    // إذا لم يتغير الرقم → عدل كلمة المرور فقط
     if(newPhone === oldPhone){
-        db.ref("users/"+oldPhone).update({
-            phone:newPhone,
-            pass:newPass
-        }, ()=>{
-            alert("تم حفظ التعديلات");
+        db.ref("users/"+oldPhone).update({ pass:newPass }, ()=>{
+            alert("تم الحفظ");
             closeEdit();
             loadUsers();
         });
-        return;
-    }
-
-    // إذا تغيّر الرقم → إنشاء مستخدم جديد ونقل الديون
-    db.ref("users/"+oldPhone).once("value", snap => {
-        let u = snap.val();
-
-        let newData = {
-            phone:newPhone,
-            pass:newPass,
-            role:u.role,
-            ban:u.ban,
-            expire:u.expire
-        };
-
-        // إنشاء مستخدم جديد
-        db.ref("users/"+newPhone).set(newData, ()=>{
-
-            // نقل الديون
-            db.ref("debts/"+oldPhone).once("value", dSnap=>{
-                if(dSnap.exists()){
-                    db.ref("debts/"+newPhone).set(dSnap.val());
-                    db.ref("debts/"+oldPhone).remove();
-                }
-            });
-
-            // حذف القديم
-            db.ref("users/"+oldPhone).remove(()=>{
-                alert("تم تعديل المستخدم ونقل الديون للرقم الجديد");
-                closeEdit();
-                loadUsers();
+    } else {
+        // تغيير الرقم ونقل البيانات
+        db.ref("users/"+oldPhone).once("value", snap => {
+            let u = snap.val();
+            db.ref("users/"+newPhone).set({...u, phone:newPhone, pass:newPass}, ()=>{
+                db.ref("debts/"+oldPhone).once("value", dSnap=>{
+                    if(dSnap.exists()){
+                        db.ref("debts/"+newPhone).set(dSnap.val());
+                        db.ref("debts/"+oldPhone).remove();
+                    }
+                });
+                db.ref("users/"+oldPhone).remove(()=>{
+                    alert("تم نقل المستخدم للرقم الجديد");
+                    closeEdit();
+                    loadUsers();
+                });
             });
         });
-    });
+    }
 }
 
-// حظر / إلغاء حظر
 function toggleBan(phone, state){
-    usersRef.child(phone).update({ban:!state});
-    loadUsers();
+    usersRef.child(phone).update({ban:!state}, ()=> loadUsers());
 }
 
-// تفعيل الاشتراك
-function activate(phone){
-    let days = prompt("عدد الأيام:");
-    if(!days || isNaN(days)) return;
-
-    let ms = days*24*60*60*1000;
-    usersRef.child(phone).update({
-        expire: Date.now()+ms
-    });
-
-    loadUsers();
-}
-
-// حذف المستخدم نهائياً
 function deleteUser(phone){
     if(!confirm("حذف المستخدم نهائياً؟")) return;
-
     db.ref("users/"+phone).remove();
     db.ref("debts/"+phone).remove();
     loadUsers();
@@ -272,6 +312,7 @@ function logout(){
     window.location = "index.html";
 }
 
+// تشغيل عند التحميل
 loadUsers();
 </script>
 
